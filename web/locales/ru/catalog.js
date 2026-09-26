@@ -1,0 +1,190 @@
+const EXACT = new Map([
+  ['generating supports…', 'создание поддержек…'], ['reading STEP…', 'чтение STEP…'],
+  ['Import', 'Импорт'], ['Build volume', 'Область печати'], ['Overhang', 'Нависание'],
+  ['Add fins', 'Добавить рёбра'], ['Fins on', 'Рёбра включены'],
+  ['Export STL', 'Экспорт STL'], ['Export 3MF', 'Экспорт 3MF'],
+  ['File', 'Файл'], ['Triangles', 'Треугольники'], ['Size', 'Размер'],
+  ['Volume', 'Объём'], ['Overhangs', 'Нависания'], ['Area', 'Площадь'],
+  ['Bed contact', 'Контакт со столом'], ['Fins', 'Рёбра'], ['Bed pad', 'Опорная площадка'],
+  ['Analysis', 'Анализ'], ['Rotate 90°', 'Повернуть на 90°'], ['Reset', 'Сбросить'],
+  ['Undo', 'Отменить'], ['Redo', 'Повторить'],
+  ['Drag the rings to turn it, or:', 'Для поворота перетаскивайте кольца или:'],
+  ['Lay a face flat', 'Уложить гранью на стол'], ['Show layers', 'Показать слои'],
+  ['Suggest orientation', 'Подобрать ориентацию'], ['Ranking…', 'Подбор…'],
+  ['Strength arrow', 'Стрелка нагрузки'], [': which way is it loaded?', ': куда направлена нагрузка?'],
+  ['⊙ front', '⊙ к вам'], ['⊗ back', '⊗ от вас'], ['Clear', 'Сбросить'],
+  ['Turn to the strongest printable pose', 'Повернуть для максимальной прочности при печати'],
+  ['Setup', 'Настройки'], ['Material', 'Материал'], ['Placement', 'Размещение'],
+  ['Auto — place supports for me', 'Автоматически — разместить поддержки'],
+  ['Draw — place them by hand', 'Ручное размещение — расставить поддержки'],
+  ['Tines', 'Перемычки'], ['grip the part', 'фиксируют деталь'],
+  ['Tine grip', 'Фиксация перемычками'], ['light ⟶ firm', 'слабая ⟶ сильная'],
+  ['Layer height', 'Высота слоя'], ['Clearances', 'Зазоры'],
+  ['Support gap', 'Зазор поддержки'], ['Off', 'Выкл.'], ['Auto', 'Автоматически'],
+  ['Light', 'Лёгкая'], ['Sure hold', 'Надёжная фиксация'],
+  ['Custom', 'Свои настройки'], ['Custom…', 'Свои настройки…'],
+  ['Pad thickness', 'Толщина площадки'], ['Pad gap', 'Зазор площадки'],
+  ['Pad grip', 'Сцепление площадки'], ['Pad spread', 'Выступ площадки'],
+  ['Sway braces', 'Распорки'], ['tall parts', 'высокие детали'],
+  ['Brace grip from', 'Начало фиксации'], ['mm up', 'мм от стола'],
+  ['Brace tine spacing', 'Шаг перемычек'], ['Brace depth', 'Глубина распорки'],
+  ['% of height', '% высоты'], ['Walls', 'Стенки'], ['Cutouts', 'Вырезы'],
+  ['None', 'Нет'], ['Diamond', 'Ромб'], ['Triangle', 'Треугольник'],
+  ['Arch', 'Арка'], ['Lattice', 'Решётка'],
+  ['Wide-face coverage', 'Поддержка широкой грани'], ['sparse ⟶ dense', 'реже ⟶ чаще'],
+  ['+ Add walls by hand', '+ Добавить стенки вручную'],
+  ['Done adding walls', 'Завершить добавление стенок'],
+  ['Remove fins', 'Удалить рёбра'], ['Restore all', 'Восстановить все'],
+  ['Click an', 'Нажмите на'], ['overhang face', 'нависающую грань'],
+  ['— it lights up green when a fin can go there — to stand a support fin against it.',
+    '— она подсвечивается зелёным, если здесь можно разместить ребро поддержки.'],
+  ['Remove selected', 'Удалить выбранное'], ['Clear all', 'Удалить все'],
+  ['of support material added', 'на поддержки'],
+  ['Print it support-free, in any slicer', 'Печатайте без поддержек слайсера'],
+  ['Rotate a part however it prints best, and Support Fins bakes the breakaway supports right into the STL. It prints the same on any machine, in any slicer, with supports turned off.',
+    'Поверните деталь в удобную для печати ориентацию, и Support Fins добавит отламываемые поддержки прямо в STL. Результат одинаков на любом принтере и в любом слайсере с выключенными поддержками.'],
+  ['Import an STL, 3MF or STEP.', 'Импортируйте STL, 3MF или STEP.'],
+  ['Drop it anywhere on this page.', 'Перетащите файл в любое место этой страницы.'],
+  ['Rotate it.', 'Поверните деталь.'],
+  ['Red marks every surface that needs support.', 'Красным отмечены поверхности, которым нужна поддержка.'],
+  ['Export.', 'Экспортируйте.'],
+  ['Fins come baked in — no slicer supports needed.', 'Рёбра уже в модели — поддержки слайсера не нужны.'],
+  ['Opening the 3MF, Bambu Studio and PrusaSlicer may note it has “no config” and load the geometry only — that’s expected. The file is pure geometry with no slicer profile baked in, so it opens the same in every slicer; your part comes in correctly oriented and sized. Just slice with supports off.',
+    'При открытии 3MF Bambu Studio и PrusaSlicer могут сообщить об отсутствии настроек и загрузке только геометрии — это нормально. Файл содержит геометрию без профиля слайсера и открывается одинаково во всех слайсерах; ориентация и размеры детали сохраняются. Нарезайте с выключенными поддержками.'],
+  ['Nothing is uploaded. The file is read inside this tab and never leaves your machine.',
+    'Файлы никуда не отправляются. Обработка выполняется в этой вкладке, и файл не покидает ваш компьютер.'],
+  ['Free and open source. If it ever saves you a print,',
+    'Бесплатно и с открытым исходным кодом. Если проект спасёт вашу печать,'],
+  ['buy me a coffee ☕', 'угостите автора кофе ☕'],
+  ['This file has several objects', 'В файле несколько объектов'],
+  ['Pick the one to add fins to. Check more than one to merge them into a single part.',
+    'Выберите объект для добавления рёбер. Отметьте несколько, чтобы объединить их в одну деталь.'],
+  ['Cancel', 'Отмена'], ['Load', 'Загрузить'],
+  ['No supports needed this way up.', 'В этой ориентации поддержки не нужны.'],
+  ['This prints clean lying flat. You only need fins if you’re tilting it for strength.',
+    'В исходном положении плашмя деталь печатается без поддержек. Рёбра нужны, только если вы наклоняете её для повышения прочности.'],
+  ['Click a pose to turn the part.', 'Нажмите на вариант, чтобы повернуть деталь.'],
+  ['Nothing to suggest for this part.', 'Для этой детали нет подходящих вариантов.'],
+  ['No printable orientation: this part balances on a point at every angle.',
+    'Нет пригодной для печати ориентации: при любом повороте деталь опирается на точку.'],
+  ['Collapse suggestions', 'Свернуть варианты'], ['Show suggestions', 'Показать варианты'],
+  ['Collapse', 'Свернуть'], ['Show', 'Показать'],
+  ['width', 'ширина'], ['depth', 'глубина'], ['height', 'высота'],
+  ['Surface angle from the plate below which a face needs support.',
+    'Угол поверхности относительно стола, ниже которого грани нужна поддержка.'],
+  ["Opens oriented and support-free in Bambu Studio, OrcaSlicer, or PrusaSlicer. Bambu/PrusaSlicer may note 'no config, geometry only' — expected; the part still comes in correct.",
+    'Открывается в заданной ориентации и не требует поддержек слайсера в Bambu Studio, OrcaSlicer или PrusaSlicer. Bambu/PrusaSlicer могут сообщить об отсутствии настроек и загрузке только геометрии — это нормально; деталь импортируется правильно.'],
+  ['Source code on GitHub. Runs entirely in your browser; no file ever leaves your machine.',
+    'Исходный код на GitHub. Всё работает в браузере; файлы не покидают ваш компьютер.'],
+  ['Support Fins on GitHub', 'Support Fins на GitHub'],
+  ['Support Fins is free and open source — buy me a coffee on Ko-fi.',
+    'Support Fins — бесплатный проект с открытым исходным кодом. Поддержите автора чашкой кофе на Ko-fi.'],
+  ['How these supports work, and what this pose leaves uncovered',
+    'Как работают поддержки и какие участки остаются без поддержки в этой ориентации'],
+  ['Rotate 90 degrees about X', 'Повернуть на 90 градусов вокруг X'],
+  ['Rotate 90 degrees about Y', 'Повернуть на 90 градусов вокруг Y'],
+  ['Rotate 90 degrees about Z', 'Повернуть на 90 градусов вокруг Z'],
+  ['Undo (⌘/Ctrl+Z)', 'Отменить (⌘/Ctrl+Z)'],
+  ['Redo (⇧⌘/Ctrl+Shift+Z)', 'Повторить (⇧⌘/Ctrl+Shift+Z)'],
+  ["Click this, then click a face to set it flat on the bed. Off by default so a stray click can't re-lay the part.",
+    'Нажмите эту кнопку, затем выберите грань, чтобы уложить её на стол. По умолчанию режим выключен, чтобы случайный щелчок не менял положение детали.'],
+  ['Show the horizontal print layers around the part.', 'Показать горизонтальные слои печати вокруг детали.'],
+  ['Load direction', 'Направление нагрузки'], ['Load points up', 'Нагрузка направлена вверх'],
+  ['Load points down', 'Нагрузка направлена вниз'], ['Load points left', 'Нагрузка направлена влево'],
+  ['Load points right', 'Нагрузка направлена вправо'],
+  ['Load points toward you', 'Нагрузка направлена к вам'],
+  ['Load points away from you', 'Нагрузка направлена от вас'],
+  ['About this number', 'Об этом значении'],
+  ['Interactive 3D preview of the loaded part. Orientation and support stats are reported as text in the panel on the left.',
+    'Интерактивный 3D-просмотр загруженной детали. Ориентация и параметры поддержек показаны текстом на панели слева.'],
+  ["The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps, shrinks the tine bite, and gives the bed pad a gap instead of a bite. PLA keeps the tighter grip.",
+    'Материал для печати. PETG сильнее сплавляется с поддержками, чем PLA, поэтому для него увеличены зазоры, уменьшено заглубление перемычек, а опорная площадка отделена зазором. Для PLA сохраняется более плотное сцепление.'],
+  ['Who places the support.', 'Способ размещения поддержек.'],
+  ['Tines fuse the support to the part so it grips instead of just propping. Off = plain breakaway wall.',
+    'Перемычки сплавляют поддержку с деталью, фиксируя её. Если выключены, остаётся обычная отламываемая стенка.'],
+  ['How tightly to space the grip tines. Light = fewest marks (default), a per-wall floor keeps grip; Firm = dense comb / max grip for a tippy or tall part.',
+    'Плотность соединительных перемычек. Слабая фиксация оставляет меньше следов; сильная даёт частые перемычки для неустойчивой или высокой детали.'],
+  ["Set this to the layer height you slice at. The grip tines are one layer tall so they snap off clean; if this doesn't match your slicer, the tines tear and leave marks. Default 0.2mm.",
+    'Укажите высоту слоя из слайсера. Перемычки имеют высоту одного слоя и легко отламываются; при несовпадении настроек они рвутся и оставляют следы. По умолчанию 0.2 мм.'],
+  ['Clearance between a support top and the part. Bigger = cleaner surface / easier removal; too big stops holding the overhang. Default 0.2mm.',
+    'Зазор между верхом поддержки и деталью. Больший зазор облегчает снятие и улучшает поверхность; слишком большой перестаёт удерживать нависание. По умолчанию 0.2 мм.'],
+  ['A tilted part rests on an edge and peels off the plate without a pad. Auto: Light, or Sure hold when the part meets the plate on a point or a small round foot (it shows which). Light: one layer, 0.12mm off the part, peels off like a brim. Sure hold: thicker and tacked into the part, holds harder but is harder to remove. Custom: set every number yourself.',
+    'Наклонённая деталь опирается на ребро и без площадки может оторваться от стола. Автоматический режим выбирает лёгкую или усиленную площадку по площади контакта. Свои настройки позволяют задать все параметры.'],
+  ['How tall the pad is. Only the first layer grips the plate; more layers make it stiffer and harder to peel.',
+    'Толщина площадки. Со столом сцепляется только первый слой; дополнительные слои увеличивают жёсткость и затрудняют снятие.'],
+  ["Sideways clearance between the pad and the part's first layer. 0.12mm lets first-layer squish just close it, the way a slicer brim holds; bigger comes off easier and holds less. Under 0.1mm most slicers merge the gap and the pad welds on. 0 = no gap (Pad grip decides).",
+    'Боковой зазор между площадкой и первым слоем детали. При 0.12 мм расплющивание первого слоя закрывает зазор, как у каймы; больший зазор облегчает снятие, но ослабляет фиксацию. 0 = без зазора.'],
+  ["Where the pad meets the part's underside. Positive bites in to hold harder; 0 is flush; negative leaves a gap that snaps off cleaner.",
+    'Контакт площадки с нижней поверхностью детали. Положительное значение заглубляет площадку; 0 — вровень; отрицательное оставляет зазор.'],
+  ["How far the pad spreads past the part's contact with the plate. More spread = more plate grip.",
+    'Насколько площадка выступает за область контакта детали со столом. Больший выступ улучшает сцепление со столом.'],
+  ["Stand tapered buttress ribs against the upright sides of a tall part, tied on with tines all the way up, so it doesn't drift or wobble as it grows. In Draw, click an upright side to add one.",
+    'Сужающиеся распорки у вертикальных сторон высокой детали предотвращают смещение и раскачивание. В ручном режиме нажмите на вертикальную сторону, чтобы добавить распорку.'],
+  ['Height the brace tines start at. 0 = grip the whole height; raise it to tie on only above where the part starts to move.',
+    'Высота начала перемычек распорки. 0 = фиксация по всей высоте; увеличьте значение для фиксации только выше места раскачивания.'],
+  ['Vertical distance between brace tines. Smaller = held tighter, more marks on the side. Default 6mm.',
+    'Расстояние по вертикали между перемычками распорки. Меньше — крепче фиксация и больше следов. По умолчанию 6 мм.'],
+  ['How far the brace reaches out at the bed, as a share of its height. Deeper = stiffer, more plastic. Default 15%.',
+    'Выступ распорки по столу в долях её высоты. Большая глубина повышает жёсткость и расход пластика. По умолчанию 15%.'],
+  ["Cut holes through tall breakaway walls to save filament. The top edge that holds the part, the foot, and the wall's ends stay solid, and every hole has a pointed roof so it prints without bridging. Short walls stay solid.",
+    'Отверстия в высоких отламываемых стенках экономят пластик. Верхняя кромка, основание и торцы остаются сплошными; короткие стенки также остаются сплошными.'],
+  ['How densely to line a WIDE overhang face with fins. The middle is the anti-sag default; drag LEFT for fewer fins (a small part can go down to one — the readout warns if a broad face then risks sagging), RIGHT for more support. Narrow parts are unaffected.',
+    'Частота рёбер под широкой нависающей гранью. Сдвиг влево уменьшает число рёбер, вправо — увеличивает. На узкие детали настройка не влияет.'],
+  ['Place extra breakaway walls by hand, on top of the auto-placed ones.', 'Добавить отламываемые стенки вручную к автоматически размещённым.'],
+  ['Click a fin to remove just that one. Esc or right-click cancels.', 'Нажмите на ребро, чтобы удалить его. Esc или правая кнопка мыши отменяет режим.'],
+  ['Bring back every fin removed in this orientation.', 'Восстановить все рёбра, удалённые в этой ориентации.'],
+  ['Remove the support you clicked (Delete or Backspace also works).', 'Удалить выбранную поддержку (также можно нажать Delete или Backspace).'],
+  ["Grams assume PLA and count only the fins + pad the tool adds, printed near-solid, cross-checked against the builder's fin volume. In test prints, breakaway fins used 20–45% less plastic and printed ~30% faster than slicer supports.",
+    'Масса рассчитана для PLA и учитывает добавленные рёбра и площадку при почти сплошной печати. В тестах отламываемые рёбра расходовали на 20–45% меньше пластика и печатались примерно на 30% быстрее поддержек слайсера.'],
+]);
+
+const TEMPLATES = [
+  { pattern: /^Merge (\d+) & load$/, replace: ([, n]) => `Объединить ${n} и загрузить` },
+  { pattern: /^(\d+) selected — merged into one part$/, replace: ([, n]) => `Выбрано: ${n} — будут объединены в одну деталь` },
+  { pattern: /^Could not read (.+):\n([\s\S]+)$/, replace: ([, file, detail]) => `Не удалось прочитать ${file}:\n${detail}` },
+  { pattern: /^Click a face to lay it flat — Esc cancels$/, replace: () => 'Выберите грань для укладки на стол — Esc отменяет' },
+  { pattern: /^(\d+(?:\.\d+)?) mm²$/, replace: ([, n]) => `${n} мм²` },
+  { pattern: /^(\d+(?:\.\d+)?) mm$/, replace: ([, n]) => `${n} мм` },
+  { pattern: /^(\d+) fps$/, replace: ([, n]) => `${n} кадр/с` },
+  { pattern: /^(\d+) region(?:s)?(?: \(\+(\d+) sliver(?:s)?\))?$/, replace: ([, n, small]) => `Участков: ${n}${small ? ` (мелких: +${small})` : ''}` },
+  { pattern: /^imported “(.+)” of (\d+) objects$/, replace: ([, name, total]) => `Импортирован объект «${name}»; всего объектов: ${total}` },
+];
+
+const ALLOWED_ENGLISH = [
+  /Support Fins/gi, /GitHub/gi, /Ko-fi/gi, /Bambu Studio/gi, /OrcaSlicer/gi,
+  /PrusaSlicer/gi, /STL/gi, /3MF/gi, /STEP/gi, /PLA/gi, /PETG/gi,
+  /ZIP64?/gi, /CAD/gi, /mm(?:²|³)?/gi, /fps/gi, /Ctrl/gi, /Shift/gi,
+  /Esc/gi, /Delete/gi, /Backspace/gi, /X|Y|Z/g,
+];
+
+export const DOM_RULES = Object.freeze([
+  { selector: '#s-name', ignoreText: true },
+  { selector: '#picker-list .pick-name', ignoreText: true },
+  { selector: '#picker-list input', ignoreText: true },
+]);
+
+function splitOuterWhitespace(value) {
+  const match = String(value).match(/^(\s*)([\s\S]*?)(\s*)$/);
+  return { before: match[1], core: match[2], after: match[3] };
+}
+
+export function translateText(value) {
+  const { before, core, after } = splitOuterWhitespace(value);
+  const fixed = EXACT.get(core.replace(/\s+/g, ' '));
+  if (fixed != null) return `${before}${fixed}${after}`;
+  for (const template of TEMPLATES) {
+    const match = core.match(template.pattern);
+    if (match) return `${before}${template.replace(match)}${after}`;
+  }
+  return String(value);
+}
+
+export function hasTranslation(value) { return translateText(value) !== String(value); }
+
+export function isAllowedEnglish(value) {
+  let remainder = String(value);
+  for (const allowed of ALLOWED_ENGLISH) remainder = remainder.replace(allowed, '');
+  return !/[A-Za-z]{2,}/.test(remainder);
+}
+
+export const catalog = Object.freeze({ exact: EXACT, templates: TEMPLATES });

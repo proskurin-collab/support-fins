@@ -668,7 +668,7 @@ function buildFin(p0, out, span, topo, rot, offset, opts = {}) {
 /**
  * Apply the page's clearance settings to FIN / PROP / PAD.
  *
- * WHY THIS IS A PARAMETER AND NOT JUST A MODULE EDIT. app.js sets these objects
+ * WHY THIS IS A PARAMETER AND NOT JUST A MODULE EDIT. ui/settings.js sets these objects
  * directly (applyMaterial for the PLA/PETG profiles, the Support gap and Pad grip
  * fields) and that works for anything it builds itself. But the real build runs in
  * finworker.js, a module Worker with its OWN instance of fins.js and prop.js: module
@@ -1132,13 +1132,13 @@ export function gripPatches(topo, result, rot) {
  */
 export function buildFinOnPatch(topo, result, rot, patch, opts = {}) {
   if (patch.n.z >= -0.05) {
-    return { ok: false, reason: 'выберите нижнюю или нависающую грань — ребро поддержки '
-      + 'подпирает нависание снизу, а не вертикальную сторону' };
+    return { ok: false, reason: 'aim at a downward / overhang face — a support fin '
+      + 'holds an overhang up from below, not a vertical side' };
   }
   const w = buildPerpFins(patch, topo, rot, result.offset, { tines: opts.tines, tineDensity: opts.tineDensity });
   if (!w.count) {
-    return { ok: false, reason: 'эта грань слишком мала или недостаточно наклонена для ребра '
-      + 'под ней — увеличьте наклон или выберите более широкое нависание' };
+    return { ok: false, reason: 'this face is too small or shallow to stand a fin '
+      + 'under — tilt it steeper, or pick a broader overhang' };
   }
   return { ok: true, triangles: w.triangles, info: { count: w.count, tines: w.tines, perp: true } };
 }

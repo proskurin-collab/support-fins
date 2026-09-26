@@ -1,0 +1,121 @@
+name: sync upstream
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM_URL: https://github.com/gittrahan/support-fins.git
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch fork and upstream
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+          git fetch upstream main
+      - name: Fast-forward upstream mirror
+        id: mirror
+        run: |
+          new=$(git rev-parse upstream/main)
+          old=$(git rev-parse origin/upstream-sync 2>/dev/null || true)
+          echo "sha=$new" >> "$GITHUB_OUTPUT"
+          if [ -n "$old" ] && ! git merge-base --is-ancestor "$old" "$new"; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "reason=upstream rewrote history; upstream-sync was not changed" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git push origin "$new:refs/heads/upstream-sync"
+          echo "blocked=false" >> "$GITHUB_OUTPUT"
+      - name: Integrate into the persistent sync PR
+        if: steps.mirror.outputs.blocked != 'true'
+        id: integrate
+        run: |
+          new='${{ steps.mirror.outputs.sha }}'
+          if git merge-base --is-ancestor "$new" origin/main; then
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          pr=$(gh pr list --state open --base main --head sync/upstream --json number --jq '.[0].number // empty')
+          if [ -n "$pr" ]; then
+            git checkout -B sync/upstream origin/sync/upstream
+            echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          else
+            git checkout -B sync/upstream origin/main
+          fi
+
+          if git merge-base --is-ancestor "$new" HEAD; then
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git merge --no-edit "$new"; then
+            conflicts=$(git diff --name-only --diff-filter=U)
+            git merge --abort
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "conflicts<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$conflicts" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git push --force-with-lease origin sync/upstream
+          if [ -z "$pr" ]; then
+            pr=$(gh pr create --draft --base main --head sync/upstream \
+              --title 'Sync upstream changes' \
+              --body 'Automated integration of the latest gittrahan/support-fins main. Review localization checks, mark ready, and merge manually.')
+            echo "pr=${pr##*/}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "blocked=false" >> "$GITHUB_OUTPUT"
+      - name: Report a blocked synchronization
+        if: steps.mirror.outputs.blocked == 'true' || steps.integrate.outputs.blocked == 'true'
+        env:
+          SHA: ${{ steps.mirror.outputs.sha }}
+          MIRROR_REASON: ${{ steps.mirror.outputs.reason }}
+          CONFLICTS: ${{ steps.integrate.outputs.conflicts }}
+        run: |
+          issue=$(gh issue list --state open --search 'Upstream sync blocked in:title' --json number,title --jq '.[] | select(.title == "Upstream sync blocked") | .number' | head -1)
+          {
+            echo "Upstream synchronization stopped without choosing a conflict side."
+            echo
+            echo "Upstream SHA: \`$SHA\`"
+            if [ -n "$MIRROR_REASON" ]; then
+              echo
+              echo "$MIRROR_REASON"
+            fi
+            if [ -n "$CONFLICTS" ]; then
+              echo
+              echo 'Conflicting files:'
+              echo '```'
+              echo "$CONFLICTS"
+              echo '```'
+            fi
+          } > /tmp/upstream-blocked.md
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file /tmp/upstream-blocked.md
+          else
+            gh issue create --title 'Upstream sync blocked' --body-file /tmp/upstream-blocked.md
+          fi
+      - name: Close stale blocked issue after success
+        if: steps.mirror.outputs.blocked != 'true' && steps.integrate.outputs.blocked != 'true' && steps.integrate.outputs.noop != 'true'
+        run: |
+          issue=$(gh issue list --state open --search 'Upstream sync blocked in:title' --json number,title --jq '.[] | select(.title == "Upstream sync blocked") | .number' | head -1)
+          [ -z "$issue" ] || gh issue close "$issue" --comment 'The latest upstream commit merged into sync/upstream without conflicts.'

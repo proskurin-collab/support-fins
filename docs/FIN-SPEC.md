@@ -1,189 +1,181 @@
-# Спецификация геометрии рёбер
+# Fin geometry spec
 
-Все приведённые здесь числа Slant3D называет в видео *Как спроектировать лучшие рёбра
-поддержки для 3D-печати* (youtube.com/watch?v=vnn4XeKQobs). Это не наши предположения.
-Если мы отступаем от этих значений, здесь указано, где и почему.
+Every number here is stated on camera by Slant3D in *How to Design Better Support Fins
+for 3D Printing* (youtube.com/watch?v=vnn4XeKQobs). These are not our guesses. Where we
+deviate, this file says so and why.
 
-## Форма
+## The shape
 
-Ребро поддержки — это **зазор и захват**, и важны обе части:
+A support fin is **a gap and a grab**, and both halves matter:
 
-- **Тело ребра** — тонкая стенка, отделённая от поверхности детали зазором; она подпирает
-  деталь так же, как поддержка слайсера.
-- **Соединительные перемычки** — маленькие горизонтальные мостики, которые *вплавляются
-  в деталь*. Именно они делают поддержку **комбинированной**.
+- The **fin body** is a thin wall standing off the part face by a clearance — it props
+  the part up, exactly like a slicer support.
+- The **tines** are tiny horizontal bridges that *fuse into the part*. They're what make
+  it a **combined** support.
 
-Без перемычек ребро удерживает деталь только в одном направлении. Она падает в сторону
-*от* него: Slant3D показывает настоящий куб, с которым это произошло прямо во время печати.
-**Перемычки — сама суть метода, а не дополнительное улучшение.**
+A fin with no tines only holds the part in one direction. The part falls *away* from it
+sideways — Slant3D demos a real cube that did exactly that, mid-print. **Tines are the
+entire point, not a refinement.**
 
-## Размеры
+## Dimensions
 
-| элемент | значение | обоснование |
+| feature | value | rationale |
 |---|---|---|
-| отступ тела ребра | **0.2 мм** от поверхности детали | «на расстоянии ровно 0.2 мм, как обычная поддержка» |
-| высота перемычки (по вертикали) | **один слой** (0.3 мм при высоте слоя Slant3D; **здесь 0.2 мм**, в соответствии с высотой слоя печати) | достаточно одной линии пластика; меньше линия ⇒ меньше след. Должна совпадать с высотой слоя *слайсера*, иначе нарежется на 1.5 слоя и перестанет быть одной непрерывной линией |
-| ширина перемычки | **0.4–0.8 мм** | 0.4 = один проход сопла, 0.8 = туда и обратно. Выбирать минимальную печатаемую ширину. |
-| количество перемычек | **7–8 у основания**, с увеличением интервала по высоте | в начале деталь наименее устойчива. Обычно достаточно ~5. |
-| шаг перемычек (вверху) | каждые несколько слоёв | «чтобы убедиться, что всё полностью укреплено» |
-| основание | широкий **эллипс**, диск толщиной **1 мм** | сцепление со столом без тонкой плёнки, которую придётся соскребать |
-| нижняя кромка детали | **фаска ~2 мм** | иначе наклонённая деталь начинается с одной линии и отрывается от стола |
-| верх ребра | **скруглённый**, без острия | остриё вызывает ретракт и дефекты |
-| размещение | на **кромке или углу** | скрывает следы перемычек; не в середине видимой грани |
-| длинные детали | **два ребра** с противоположных сторон | с одним ребром деталь может скрутиться и упасть |
+| fin body standoff | **0.2 mm** from the part face | "spaced exactly 0.2mm away the same way support would be" |
+| tine height (vertical) | **one layer line** (0.3 mm at Slant3D's layer height; **0.2 mm here**, matching the print's layer height) | a single bead is enough; smaller ⇒ smaller divot. Must equal the *slicer's* layer height or it slices into 1.5 layers and stops being one continuous bead |
+| tine width | **0.4–0.8 mm** | 0.4 = one nozzle pass, 0.8 = out-and-back. Prefer the smallest that prints. |
+| tine count | **7–8 near the base**, spreading out with height | the part is least stable early. ~5 is usually enough. |
+| tine spacing (upper) | every few layers | "just to make sure everything is fully reinforced" |
+| base | wide **ellipse**, **1 mm** thick disc | bed adhesion without leaving a veneer to scrape off |
+| part bottom edge | **~2 mm chamfer** | a tilted part otherwise starts on a single line and peels off the bed |
+| fin top | **rounded**, never pointed | a sharp tip is a retraction point that causes defects |
+| placement | on an **edge or corner** | hides the tine pockmarks; never the middle of a visible face |
+| long parts | **two fins**, opposite sides | a single fin lets the part twist and fall |
 
-## Почему перемычки должны быть горизонтальными
+## Why the tines must be horizontal
 
-Горизонтальная перемычка печатается **одной непрерывной линией слоя**: сопло движется вдоль
-ребра, переходит на перемычку, в деталь и обратно — **без ретракта**. Получается одна
-прочная линия пластика.
+A horizontal tine prints as **one continuous layer line**: the nozzle travels along the
+fin, crosses into the tine, into the part, and back out — **no retraction**. It is a
+single strong bead.
 
-Перпендикулярная (вертикальная) перемычка — отдельная крошечная башня, растущая на одну точку
-за слой. На каждом проходе сопло выдавливает совсем немного пластика, поэтому перемычки
-получаются хрупкими, могут не напечататься или не дойти до детали, и каждая добавляет ретракт.
-Slant3D: *«Это худший способ сделать такую поддержку».*
+A perpendicular (vertical) tine is its own little tower, grown one dot per layer. The
+nozzle deposits a tiny amount each pass, so the tines are frail, may not print at all,
+may never contact the part, and add a retraction each. Slant3D: *"This is the worst way
+of doing it."*
 
-Есть и преимущество при снятии: горизонтальные перемычки лежат в плоскости слоёв, поэтому
-их можно **сгибать**, вызывая усталость материала и чистый излом, а не рвать с выступающими
-следами.
+There's a removal benefit too: because horizontal tines lie in the plane of the layer
+lines, you **bend** them to fatigue and snap clean, instead of tearing them and leaving
+welts.
 
-## Что можно утверждать (со слов автора в видео)
+## Claims we can make (his, on camera)
 
-- Расходуют меньше материала, чем древовидные поддержки.
-- Снимаются «за долю секунды»; при 0.5 мм следы «практически незаметны».
-- **Не зависят от слайсера, принтера и материала**: они в STL, поэтому правильно печатаются
-  везде, куда отправлен файл. Слайсер не может дать этого свойства: его результат —
-  gcode для одного принтера.
-- Диагональное направление слоёв ⇒ более прочная деталь.
-- Все кромки выглядят хорошо; нет заметной разницы между качеством верхней и нижней поверхности.
+- Uses less material than tree supports.
+- Removes "in a fraction of a second"; at 0.5 mm the marks "have basically no presence at all."
+- **Slicer-, machine-, and material-independent** — it's in the STL, so it prints right
+  wherever it's sent. This is the property no slicer can provide, because a slicer's
+  output is gcode for one machine.
+- Diagonal layer lines ⇒ stronger part.
+- All edges look good — no distinct top/bottom surface finish.
 
-## Где мы отступаем от исходного метода
+## Where we deviate
 
-- **`breakaway_wall()` в прототипе создаёт только зазор, без перемычек, и добавить их
-  к ней нельзя.** Прототип проводит стенку *под* линией контакта, заканчивая её на 0.2 мм
-  ниже детали. Зазор получается только вертикальным, а перемычка через вертикальный зазор
-  приводит к описанной выше проблеме. Стенка может пройти под линией контакта *или* подняться
-  над ней, но не то и другое: на высоте контакта деталь касается плоскости стенки,
-  так что её толщина там должна была бы сойти к нулю.
+- **`breakaway_wall()` in the prototype is gap-only, no tines — and tines cannot be added
+  to it.** The prototype sweeps its wall *under* the contact line, topping out 0.2 mm
+  below the part, so the only gap it leaves is vertical, and a tine across a vertical gap
+  is the failure mode above. A wall can pass under the contact line *or* rise above it,
+  never both: at the contact height the part touches the wall's plane, so it would have to
+  pinch to zero thickness there.
 
-  Поэтому ребро должно стоять **рядом** с деталью, возле почти вертикальной грани,
-  а **нагрузку несут перемычки**. В этом смысл «комбинированной» поддержки и размещения
-  «на кромке или углу». Измерения на 11 тестовых моделях (`prototype/probe_tines*.py`):
-  в 66% точек линии контакта помещается перемычка ≤ 1.5 мм, а у 13/20 областей нависания
-  есть достаточно высокая вертикальная грань для ребра. **Из-за этого потолка ~65%
-  ручное размещение рёбер — основная функция, а не запасной вариант.**
-- **Профиль с учётом масштаба.** Подошва, фаска и вершина прототипа имеют постоянные размеры,
-  поэтому при низком нависании превращаются в распластанный лист шириной 14 мм.
-  Ширина подошвы должна зависеть от высоты стенки.
-- **Нижняя фаска 2 мм меняет саму деталь пользователя**, а не просто добавляет ребро.
-  Это требует отдельного разрешения: явно покажите действие в интерфейсе, не выполняйте скрытно.
-  **РЕШЕНИЕ (2026-09-02): НЕ реализовывать. Отламываемая опорная площадка решает ту же
-  задачу сцепления со столом, не меняя геометрию пользователя** (качество прежде всего).
-  Не возвращаться к вопросу, пока реальная печать не покажет, что одной площадки недостаточно
-  для удержания детали, наклонённой на ребро. (Всё остальное из видео Slant3D vnn4XeKQobs —
-  скруглённый верх, эллиптическая площадка, размещение на углу, горизонтальные перемычки
-  0.3×0.5, два противоположных ребра, один STL — уже реализовано. Только эту фаску мы
-  намеренно не включаем в реализацию.)
+  So the fin has to stand **beside** the part, off a near-vertical face, and let the
+  **tines carry the load** — which is what "combined" means, and why placement is "on an
+  edge or corner." Measured across the 11-model test set (`prototype/probe_tines*.py`):
+  66% of contact-line stations take a tine ≤ 1.5 mm, and 13/20 overhang regions have a
+  vertical face tall enough to stand a fin against. **That ~65% ceiling is why manual fin
+  placement is a core feature, not a fallback.**
+- **Scale-aware profile.** The prototype's foot/chamfer/tip are fixed, which degenerates
+  into a 14 mm splayed sheet when the overhang sits low. Foot width must scale with wall
+  height.
+- **The 2 mm bottom chamfer modifies the user's part**, not just adds a fin. That's a
+  bigger permission ask — surface it explicitly in the UI, don't do it silently.
+  **DECISION (2026-09-02): do NOT build it. The breakaway bed pad solves the same
+  bed-adhesion problem without touching the user's geometry** (quality-first). Don't
+  re-litigate unless a real print shows the pad alone can't hold a tilted-onto-an-edge
+  part. (Everything else Slant3D shows in vnn4XeKQobs — rounded top, ellipse pad,
+  corner placement, 0.3×0.5 horizontal tines, two-fins-opposite, one-STL — is already
+  implemented; this chamfer is the only spec feature we intentionally skip.)
 
-- **Вырезы в стенках (необязательные, по умолчанию выключены).** В задаче #34 попросили
-  отверстия в рёбрах для экономии пластика; у Slant3D рёбра сплошные. Настройка «Вырезы»
-  создаёт ромбовидные, треугольные или арочные отверстия только в середине *отламываемых
-  стенок* (`CUT` в `cutout.js`): контактная вершина с полосой 1.2 мм, подошва с полосой
-  1.2 мм и торцевые стойки 2 мм остаются сплошными; перемычки между отверстиями — 1.6 мм,
-  а верх каждого отверстия поднимается с уклоном ≥ 1.4:1 (~55°), чтобы не было мостов.
-  **Решётка** заполняет фактический контур стенки (включая наклонный верх, например под
-  наклонённым кубом) ромбами с шагом 6 мм в шахматных рядах (стойки 1.2 мм с уклоном 1.5:1,
-  ~56°). Ромбы у края обрезаются по контуру; если после обрезки уклон верха меньше 45°,
-  он подрезается ровно до 45° (двускатный верх под горизонтальной кромкой). Поэтому верх
-  каждого отверстия имеет уклон ≥ 45° — то же правило, по которому инструмент проверяет
-  нависания детали. Стенки, в которых не помещается отверстие 3 мм, остаются сплошными.
-  Боковые рёбра с перемычками из `fins.js` никогда не прорезаются: перемычки крепятся
-  по всей ширине ребра.
+- **Wall cutouts (optional, off by default).** Issue #34 asked for holes through the
+  fins to save filament; Slant3D's fins are solid. The Cutouts setting cuts diamond,
+  triangle or arch holes through the middle of *breakaway walls* only (`CUT` in
+  `cutout.js`): the contact tip + a 1.2 mm rail, the foot + a 1.2 mm rail, and 2 mm end
+  posts stay solid, webs between holes are 1.6 mm, and every hole roof rises at
+  ≥ 1.4:1 (~55°) so nothing bridges. **Lattice** instead fills the wall's real outline (it follows a
+  sloped top, e.g. a fin under a tipped cube) with 6 mm-pitch diamonds in staggered rows
+  (1.2 mm struts at 1.5:1, ~56°). Diamonds at the edge are clipped to the outline; a
+  roof that clip leaves flatter than 45° is cut back to exactly 45° (a gable under a
+  level top), so every hole roof is ≥ 45° -- the same rule the tool's overhang check
+  applies to the part. Walls too short for a 3 mm hole stay solid. The
+  tined side fins in `fins.js` are never cut -- their tines anchor across the whole
+  blade.
 
-## Виды опорной площадки — `PAD.style` в `web/fins.js`
+## Bed pad styles — `PAD.style` in `web/fins.js`
 
-Площадка добавляется под деталь, площадь контакта которой со столом меньше `padMinArea`
-(60 мм²), то есть почти под любую наклонённую деталь. **Проверено печатью, 2026-09-24:**
-куб из **PETG**, стоящий на ребре с одним клином и лёгкой площадкой, выдержал всю печать,
-а площадка снялась чисто.
+The pad goes under a part whose bed contact is under `padMinArea` (60 mm²), which is
+nearly every tilted part. **Printed, 2026-09-24:** a cube on its edge in **PETG** with
+one wedge and the Light pad held for the whole print, and the pad came off clean.
 
-| вид | толщина | контакт с деталью | обоснование |
+| style | thickness | meets the part | why |
 |---|---|---|---|
-| **Авто** (по умолчанию) | как у лёгкой площадки, либо у надёжной для маленькой опоры | согласно выбранному виду | список показывает выбор — «Авто (лёгкая)» / «Авто (надёжная)», чтобы надёжная площадка не была подписана как лёгкая |
-| **Лёгкая** | **один слой** (поле «Высота слоя») | боковой зазор **0.12 мм** от контура первого слоя детали (её сечения на середине высоты первого слоя) | как кайма слайсера: со столом сцепляется только первый слой, поэтому дополнительные слои увеличивают жёсткость и высоту сваривания, а не сцепление; зазор сохраняет площадку и деталь отдельными областями, и периметры идут рядом с деталью, а не сплошным заполнением сквозь неё |
-| **Надёжная** | `padH` 0.5 мм (PETG 0.3) | захват `grab` 0.05 мм внутрь нижней поверхности (PETG −0.1) | исходная площадка; в первых слоях нарезается как одна область с деталью — держит крепче всего, снимается трудно |
-| **Своя** | толщина площадки | зазор площадки (боковой) + захват площадки (вертикальный) | сетка лёгкой площадки с параметрами пользователя; только этот вид показывает их |
+| **Auto** (default) | Light's, or Sure hold's on a small foot | as whichever it picked | the dropdown shows the pick -- "Auto (Light)" / "Auto (Sure hold)" -- so it never reads Light over a Sure hold pad |
+| **Light** | **one layer** (the Layer height field) | **0.12 mm** sideways gap off the part's first-layer outline (its section at the first layer's mid-height) | a slicer brim: only the first layer grips the plate, so more layers add stiffness and weld height, never adhesion; the gap keeps pad and part as two regions, so perimeters run beside the part instead of solid infill through it |
+| **Sure hold** | `padH` 0.5 mm (PETG 0.3) | tacked `grab` 0.05 mm into the underside (PETG −0.1) | the original pad; slices as one merged region with the part on its first layers -- holds hardest, hard to remove |
+| **Custom** | Pad thickness | Pad gap (sideways) + Pad grip (vertical) | the Light mesh on the user's numbers; the only style that shows them |
 
-Все три выступают за область контакта на `padMargin` (4 мм); в своём варианте это настройка
-«Выступ площадки».
+All three spread `padMargin` (4 mm) past the contact; Custom exposes that as Pad spread.
 
-**Для маленьких опор используется надёжная площадка.** Лёгкая держит за счёт прижатия пластика
-первого слоя вдоль контура детали: ребро куба 40 мм даёт 80 мм такого контура. У детали на острие
-или небольшой круглой опоре это лишь несколько мм (вершина конуса или пирамиды < 1 мм, сфера
-8 мм, цилиндр на краю 7–12 мм), и держаться почти не за что. Узлы укрытия с шаровыми опорами
-печатались на надёжной площадке. Поэтому при длине контура меньше `minGripOutline` (20 мм)
-режим «Авто» строит надёжную площадку, а в показателях пишет «Надёжная (маленькая опора)»
-и объясняет причину. На стресс-наборе разделение чёткое: все круглые и точечные положения
-дают ≤ 16.5 мм, все положения на ребре — ≥ 24 мм. Порог 20 мм выбран по инженерной оценке,
-а не измерен. Явно выбранные «Лёгкая» или «Своя» не заменяются; на маленькой опоре появляется
-предупреждение (для своей — при наличии зазора).
-Подставленная площадка всегда **касается** детали (grab ≥ 0, вровень или с захватом для материала):
-у надёжной площадки PETG зазор под деталью равен 0.1 мм, из-за чего на сфере площадка оказалась
-примерно в ~0.7 мм от точки первого слоя — два несвязанных фрагмента на слое 1, ничего
-не удерживающие (сфера Matthew из PETG).
-**Зазор должен сохраниться в слайсере, а не просто существовать.** PrusaSlicer, Orca и Bambu
-закрывают любой зазор сечения меньше 2 × `slice_closing_radius` (0.049) = 0.098 мм.
-Первая лёгкая площадка рассчитывалась на 0.1 мм и хорошо печаталась ровно при 45°, но на кубе
-при 40° сетка дала 0.089 мм, и слайсер объединил первую линию куба с площадкой (Matthew,
-2026-09-24). Поэтому теперь зазор 0.12 мм выдерживается точно: верх площадки линейно поднимается
-с истинным расстоянием от сечения первого слоя детали, достигая середины высоты на границе
-зазора, что сохраняется линейной интерполяцией сетки. Измеренный после нарезки зазор составляет
-≥ 0.12 мм вдоль ребра куба при 30–50° и ≥ 0.107 мм у скруглённых торцевых углов. Шаг сетки
-0.1 мм используется только в полосе, где деталь попадает в высоту площадки (в остальных местах
-1.2 мм).
+**Small feet get Sure hold.** Light grips by first-layer squish along the part's
+first-layer outline: a 40 mm cube's edge gives 80 mm of it. A part on a point or a
+small round foot gives a few mm (cone or pyramid tip < 1 mm, sphere 8 mm, a cylinder
+on its rim 7–12 mm), which is next to nothing to hold, and the ball-footed shelter
+hubs printed on the Sure hold pad. So when that outline is under `minGripOutline`
+(20 mm) Auto builds Sure hold instead, and the readout says "Sure hold (small foot)"
+and why. On the stress set the split is clean: every round/point pose is ≤ 16.5 mm,
+every edge pose ≥ 24 mm. The 20 mm line is a judgement call, not a measurement.
+An explicit Light or Custom is never swapped; on a small foot (Custom: with a gap) it gets a warning.
+The swapped pad always **meets** the part (grab ≥ 0, flush or the material's tack):
+PETG's Sure hold stands a 0.1 mm gap under the part, which on a sphere put the pad
+~0.7 mm off the first-layer dot -- two unconnected pieces on layer 1, holding nothing
+(Matthew's PETG sphere).
+**The gap must clear the slicer, not just exist.** PrusaSlicer, Orca and Bambu close any
+slice gap under 2 × `slice_closing_radius` (0.049) = 0.098 mm. The first Light pad aimed
+for 0.1 mm and printed well at exactly 45°, but on a cube at 40° the mesh gave 0.089 mm and
+the slicer merged the cube's first bead into the pad (Matthew, 2026-09-24). So the gap is
+0.12 mm, and it is held exactly: the pad's top ramps linearly with the true distance from
+the part's first-layer section, crossing mid-height at the gap, which the mesh's linear
+interpolation preserves. Sliced gap measures ≥ 0.12 mm along a cube's edge at 30–50°,
+≥ 0.107 mm at its rounded end corners. The mesh is 0.1 mm only across the band where the
+part comes within the pad's height (1.2 mm elsewhere).
 
-Сначала пробовали площадку **с перемычками** (зазор 0.3 мм, перекрытый перемычками в один слой),
-но отказались от неё: в первом слое прорези были 0.1–0.3 мм, окружающие периметры сдавливались
-вместе, и площадка всё равно нарезалась как единая спаянная часть.
+A **tined** pad (0.3 mm clearance bridged by one-layer tines) was tried first and
+dropped: on the first layer the slots were 0.1–0.3 mm, the perimeters around them
+squished together, and it still sliced as one fused piece.
 
-**Подошвы клиньев** подчиняются тому же правилу: фланец 0.6 мм обрывается там, где деталь
-нависает над ним ниже footH + gap (0.8 мм). Раньше он выступал на 3 мм за нижний конец клина,
-пересекал ребро куба и сплавлялся с деталью на протяжении трёх слоёв.
+**Wedge feet** follow the same rule: the 0.6 mm flange stops where the part hangs less
+than footH + gap (0.8 mm) above it. It used to reach 3 mm past the wedge's low end,
+straight across a cube's edge, and fused with the part for three layers.
 
-## Стабилизирующие распорки (высокие детали) — `web/sway.js`
+## Sway braces (tall parts) — `web/sway.js`
 
-Это дополнение отсутствует в видео. Оно предназначено для высоких тонких деталей, которые
-по мере печати смещаются, прогибаются или качаются. Нависаний нет, но трение сопла и усадка
-каждого остывающего слоя сдвигают верх, а каждое движение оставляет заметную линию слоя.
-По умолчанию выключено («Стабилизирующие распорки (высокие детали)» на панели настроек).
+Not from the video; an extension for tall, slender parts that drift, sag or wobble
+as they grow. Nothing overhangs, but the nozzle's drag and each layer shrinking as
+it cools push the top around, and every movement leaves a visible layer line. Off by
+default ("Sway braces (tall parts)" in the options panel).
 
-**Проверено печатью, 2026-09-22.** Два колпака для столба высотой 249 мм напечатаны из **ASA**
-с распорками, поставленными в режиме «Ручное размещение» (три на одном, пять на другом).
-Оба получились чистыми: распорки **отломились руками**, перемычки оставили **маленькие бугорки**,
-а смещение, ради устранения которого они добавлены, исчезло. Поэтому приведённые ниже числа
-подтверждены печатью; менять их следует по тому же правилу, что и остальные значения здесь:
-по результатам измерений, а не интуитивно.
+**Printed, 2026-09-22.** Two prints of the 249 mm fence-post cap in **ASA**, braces
+hand-placed in Draw (three on one, five on the other). Both came out clean: the braces
+**snapped off by hand**, the tines left **small bumps**, and the drift the braces exist
+to stop was gone. So the numbers below are the printed ones — change them only for the
+same kind of reason the rest of this file demands: something measured, not a hunch.
 
-Оба отпечатка использовали **профиль PLA со всеми настройками по умолчанию**: зазор 0.2,
-глубина вплавления 0.3, шаг перемычек 6 мм, глубина 15%, высота слоя 0.2. Значит, зазоры PLA
-позволяют чисто снимать распорки и с ASA. У ASA пока нет своего профиля: двух отпечатков мало,
-чтобы его составить, но достаточно, чтобы считать параметры PLA подходящей отправной точкой.
+Both prints used the **PLA profile with every setting left at its default** — gap 0.2,
+bite 0.3, tine spacing 6 mm, depth 15%, layer height 0.2 — so the PLA clearances
+release cleanly in ASA too. ASA has no profile of its own yet; two prints isn't enough
+to write one, but it is enough to say the PLA numbers are a safe starting point for it.
 
-| элемент | значение | обоснование |
+| feature | value | rationale |
 |---|---|---|
-| ориентация | вертикальное ребро **торцом** к вертикальной грани (наклон ≤ 30°) | пластина, лежащая плашмя вдоль грани, легко гнётся именно тогда, когда деталь наклоняется на неё; торцом — направление наибольшей жёсткости |
-| внутренняя кромка | зазор для отламывания («Зазор поддержки») от грани | тот же отступ, что у остальных поддержек |
-| глубина | **15%** высоты ребра у стола («Глубина распорки»), сужение до 4 мм вверху | жёстче детали внизу, где плечо рычага самое длинное; плоский верх, без острия |
-| толщина | 1.2 мм + 0.004 мм на каждый мм высоты, максимум 2.4 мм | ребро высотой 250 мм и толщиной 1.2 мм тоньше относительно своей высоты, чем удерживаемая деталь |
-| перемычки | один слой, ширина одной линии, **равномерный шаг** (по умолчанию 6 мм, «Шаг перемычек распорки») от «Начала захвата распорки» до вершины | качается верх; у прежнего ребра-распорки ряды сгущались внизу и разрежались в 1.6×, оставляя верх высокой детали незакреплённым |
-| минимальный захват | ≥ 3 перемычки и ≥ 30% рядов должны находить грань | высокое ребро, прикреплённое лишь в нескольких точках, всё ещё позволяет детали раскачиваться между ними |
-| ограничение свободной стойки (**только авто**) | авто не ставит ребро, если до первой перемычки больше **40 мм** или **40%** его высоты, считая от стола либо от «Начала захвата распорки», если оно выше. Распорка, поставленная **вручную, всё равно строится**, а показатели сообщают, сколько она стоит до начала захвата | ниже нижнего захвата распорка ничего не держит и ничем не удерживается: это отдельная стенка, которая может качаться рядом с деталью в самый хрупкий момент. Авто избегает этого, но человек выбирает положение и видит то, чего не видит программа; здесь действует тот же принцип «предлагать, а не решать» |
-| пересечения | ≥ 1 мм воздуха до другой распорки (сравнение на одинаковой высоте) и до любой подпорной стенки или клина (сравнение у стола, где обе шире всего) | две спаянные поддержки уже не отламываются отдельными частями |
-| автоматическое размещение | до 4 граней с разницей направлений ≥ 60°, одно ребро на ~100 мм ширины грани, в её **самых высоких** столбцах | удерживает обе оси; ребро у нижнего конца ската укрепляет половину, которая и так не двигалась |
-| ручное размещение | режим «Ручное размещение»: щелчок по вертикальной стороне; щелчок по добавленной поддержке выделяет её, Delete / «Удалить выбранное» удаляет | |
+| orientation | vertical rib, **edge-on** to an upright face (≤ 30° lean) | a plate lying flat against the face bends the easy way exactly when the part leans into it; edge-on is its stiff direction |
+| inner edge | the breakaway gap (Support gap) off the face | same standoff as every other support |
+| depth | **15%** of rib height at the bed ("Brace depth"), tapering to 4 mm at the top | stiffer than the part at the bottom, where the lever arm is longest; a flat top, never a point |
+| thickness | 1.2 mm + 0.004 mm per mm of height, max 2.4 mm | a 250 mm rib at 1.2 mm is more slender than the part it holds |
+| tines | one layer, one bead wide, **evenly spaced** (default 6 mm, "Brace tine spacing") from "Brace grip from" to the top | the sway is at the top; the Brace's dense-low, 1.6×-spreading rows left the top of a tall part untied |
+| grip floor | ≥ 3 tines and ≥ 30% of the rows must find the face | a tall rib tied on at a few points still lets the part wave about between them |
+| stilt limit (**auto only**) | auto won't stand a rib more than **40 mm**, or more than **40%** of its height, below its first tine, measured from the plate or from "Brace grip from" if that is higher. A brace placed **by hand builds anyway** and the readout says how far it stands before gripping | under its lowest grip a brace holds nothing and nothing holds it: it prints as a lone wall, free to wobble beside a part at its most delicate. So auto avoids it — but the human picks the pose and can see what the software can't, and this is the same suggest-don't-decide split as the rest of the tool |
+| clash | ≥ 1 mm of air from another brace (compared at matching heights) and from any prop wall or wedge (compared at the bed, where both are widest) | two supports fused into one piece no longer break away in pieces |
+| auto placement | up to 4 faces with bearings ≥ 60° apart, a rib per ~100 mm of face width, at the face's **tallest** columns | holds both axes; a rib at a gable's low end braces the half that wasn't moving |
+| manual | Draw mode: one click on an upright side; click a placed support to select it, Delete / "Remove selected" to take it out | |
 
-## Терминология
+## Naming
 
-Slant3D один раз говорит «grip fins» («захватывающие рёбра»). Это не связано с *grip fin*
-в других CAD-проектах Matthew — элементом, компенсирующим допуски в сопрягаемых отверстиях.
-Не смешивайте эти термины.
+Slant3D says "grip fins" once. Unrelated to the *grip fin* used elsewhere in Matthew's
+CAD work (a tolerance-absorbing feature for mating holes). Don't collide the terms.

@@ -1,7 +1,7 @@
 /**
  * Hand-placed supports: the breakaway walls drawn in Draw mode (or the Suggest
  * "+ Add" augment) and sway braces stood with one click, their preview markers,
- * selecting one to remove it, and the Draw Undo / Clear buttons. app.js's pointer
+ * selecting one to remove it, and the Draw Clear button. app.js's pointer
  * dispatch calls drawHover / drawClick while drawActive().
  */
 import * as THREE from 'three';
@@ -12,10 +12,10 @@ import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from 
 import { removedIds } from './remove.js';
 import { histPush } from './history.js';
 import { updateReadout } from './readout.js';
-import {
-  part, topology, rotM3, lastResult, lastBuilt, finsVisible, finMode, drawAugment,
-  swayOpts, updateFit, pickFace,
-} from '../app.js';
+import { pickFace } from './pose.js';
+import { part, topology, rotM3, lastResult, updateFit } from './part.js';
+import { finsVisible, finMode, drawAugment } from './settings.js';
+import { lastBuilt, swayOpts } from './finbuild.js';
 
 // ---- draw mode: the user places breakaway walls by hand --------------------
 // A drawn wall IS the same kind of support the auto-placer emits, so it shares
@@ -213,10 +213,10 @@ function pickSupport(ev) {
 export function selectedNote() {
   const i = selectedWall.info ?? {};
   const what = selectedWall.kind === 'sway'
-    ? `стабилизирующая распорка высотой ${Math.round(i.height ?? 0)} мм`
-    : `стенка длиной ${Math.round(i.length ?? 0)} мм`;
-  return `выбрано: ${what}${i.tines ? `, соединительных перемычек: ${i.tines}` : ''}. Нажмите Delete или `
-    + '«Удалить выбранное» для удаления (Esc — оставить)';
+    ? `sway brace ${Math.round(i.height ?? 0)}mm tall`
+    : `wall ${Math.round(i.length ?? 0)}mm long`;
+  return `selected: ${what}${i.tines ? `, ${i.tines} tines` : ''}. Press Delete or `
+    + 'Remove selected to take it out (Esc to keep it)';
 }
 
 export function selectWall(w) {
@@ -276,7 +276,7 @@ function placeSecondPoint(hitPoint) {
   const r = drawnWall([aWorld.x, aWorld.y, aWorld.z],
                       [bWorld.x, bWorld.y, bWorld.z], tris, 0);
   if (!r.ok) {
-    drawMsg = `не удалось разместить стенку: ${r.reason}`;
+    drawMsg = `couldn’t place that wall: ${r.reason}`;
     clearPreview();
     updateReadout(lastBuilt);
     return;
@@ -325,7 +325,7 @@ function placeSway(hit) {
                        [hit.point.x, hit.point.y, hit.point.z], swayOpts(),
                        { braces: standing, walls: auto.walls });
   if (!r.ok) {
-    drawMsg = `не удалось разместить распорку: ${r.reason}`;
+    drawMsg = `couldn’t place that brace: ${r.reason}`;
     updateReadout(lastBuilt);
     return;
   }
@@ -338,31 +338,21 @@ function placeSway(hit) {
   updateFit();
 }
 
-/** Show the Draw controls (hint + Undo/Clear) only while hand-placement is live,
+/** Show the Draw controls (hint + Clear) only while hand-placement is live,
  *  and word the hint for what the click does: a support fin in Draw, a two-point
  *  wall in the Suggest "+ Add" augment. */
 export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
-  el('draw-hint').innerHTML = 'Укажите <strong>две точки</strong> поперёк нависания '
-    + 'прямо на красных гранях, чтобы разместить отламываемую стенку вдоль этой линии. '
+  el('draw-hint').innerHTML = 'Click <strong>two points</strong> across an overhang '
+    + '— straight onto the red faces — to lay a breakaway wall along that line. '
     + (el('sway').checked
-      ? 'Нажмите один раз на <strong>вертикальную сторону</strong>, чтобы поставить стабилизирующую распорку. '
+      ? 'Click an <strong>upright side</strong> once to stand a sway brace against it. '
       : '')
-    + '<kbd>Esc</kbd> или правая кнопка мыши — отмена.';
+    + '<kbd>Esc</kbd> or right-click cancels.';
 }
 
-// Undo/Clear act on the hand-drawn breakaway walls -- the thing both Draw and the
-// Suggest "+ Add" augment now place.
-el('draw-undo').addEventListener('click', () => {
-  if (!drawnWalls.length) return;
-  histPush();
-  drawnWalls.pop();
-  drawMsg = '';
-  clearPreview();
-  rebuildDrawn();
-  updateReadout(lastBuilt);
-  updateFit();
-});
+// Clear acts on the hand-drawn breakaway walls -- the thing both Draw and the
+// Suggest "+ Add" augment now place. Undo is the sidebar's (and Ctrl-Z).
 el('draw-clear').addEventListener('click', () => {
   if (!drawnWalls.length) return;
   histPush();

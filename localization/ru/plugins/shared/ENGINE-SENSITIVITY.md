@@ -11,7 +11,7 @@
 соединительных перемычек вдоль верха каждого ребра.
 
 ```
-deno run --allow-read plugins/orca/tests/sensitivity_repro.js
+deno run --allow-read plugins/shared/tests/sensitivity_repro.js
 ```
 
 Повторная проверка текущей `main` (после переноса в `plugins/`):
@@ -47,6 +47,6 @@ deno run --allow-read plugins/orca/tests/sensitivity_repro.js
 2. Сделать решения о сохранении и пропуске устойчивыми: отклонять луч на фиксированный
    иррациональный угол или использовать полосу допуска с детерминированным разрешением равенств.
 
-Плагин Orca использует вариант 1 в `panel/fins_entry.js`: повторно центрирует деталь в
+Плагин Orca использует вариант 1 в `plugins/shared/engine/fins_entry.js`: повторно центрирует деталь в
 float64 и привязывает её к сетке 1 нм перед вызовом движка. С привязкой рёбра одинаковы
-в любом месте стола (`tests/entry.test.js`, "moving a part around the plate never changes its fins").
+в любом месте стола (`plugins/shared/tests/entry.test.js`, "moving a part around the plate never changes its fins").

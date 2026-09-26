@@ -38,10 +38,10 @@ def report(src, L):
     beam = axis - np.dot(axis, L) * L
     beam = beam / np.linalg.norm(beam) if np.linalg.norm(beam) > 1e-6 else axis
 
-    print(f"\n{'='*98}\n{src.split('/')[-1]}  габариты {np.round(mesh.extents,1)}  "
-          f"удлинённость {elong:.2f}")
-    print(f"  стрелка (приложенная сила) {np.round(L,2)}   ->  критическое направление растяжения {np.round(L,2)}"
-          f"   критическое направление изгиба (ось балки) {np.round(beam,2)}")
+    print(f"\n{'='*98}\n{src.split('/')[-1]}  bbox {np.round(mesh.extents,1)}  "
+          f"elongation {elong:.2f}")
+    print(f"  arrow (applied force) {np.round(L,2)}   ->  PULL-critical {np.round(L,2)}"
+          f"   BEND-critical (beam axis) {np.round(beam,2)}")
 
     rows = []
     for name, tilt, prob, m in candidates(mesh):
@@ -57,8 +57,8 @@ def report(src, L):
         bend = 1.0 - abs(float((R @ beam)[2]))
         rows.append((name, d, pull, bend))
 
-    print(f"  {'ориентация':16} {'РАСТ.':>6} {'ИЗГИБ':>6} {'высота':>7} {'стол':>7} "
-          f"{'нависание':>9} {'рёбра':>6} {'корот.':>6}")
+    print(f"  {'orientation':16} {'PULL':>6} {'BEND':>6} {'height':>7} {'bed':>7} "
+          f"{'overhang':>9} {'fins':>6} {'short':>6}")
     for name, d, pull, bend in rows:
         short = d['regions'] - d['real_fins']
         print(f"  {name:16} {pull:6.2f} {bend:6.2f} {d['height']:7.1f} {d['bed']:7.0f} "
@@ -79,13 +79,13 @@ def report(src, L):
     bp = best(lambda r: r[2])
     bb = best(lambda r: r[3])
     flat = min(rows, key=lambda r: r[1]['height'])
-    print(f"  => режим растяжения выбирает {bp[0]:14} (оценка {bp[2]:.2f}, {bp[1]['real_fins']} рёбер)")
-    print(f"  => режим изгиба выбирает {bb[0]:14} (оценка {bb[3]:.2f}, {bb[1]['real_fins']} рёбер)")
-    print(f"  => самая плоская/по умолчанию {flat[0]:13} (РАСТ. {flat[2]:.2f} ИЗГИБ {flat[3]:.2f}, "
-          f"{flat[1]['real_fins']} рёбер)")
+    print(f"  => PULL mode picks {bp[0]:14} (score {bp[2]:.2f}, {bp[1]['real_fins']} fins)")
+    print(f"  => BEND mode picks {bb[0]:14} (score {bb[3]:.2f}, {bb[1]['real_fins']} fins)")
+    print(f"  => flattest/default {flat[0]:13} (PULL {flat[2]:.2f} BEND {flat[3]:.2f}, "
+          f"{flat[1]['real_fins']} fins)")
     if bp[0] != bb[0]:
-        print(f"  ** РАСТЯЖЕНИЕ и ИЗГИБ дают РАЗНЫЙ ВЫБОР -> простой интерфейс указания силы "
-              f"выбрал бы {bp[0]} для детали, разрушающейся от изгиба **")
+        print(f"  ** PULL and BEND DISAGREE -> a naive 'point at the force' UI would "
+              f"pick {bp[0]} for a part that actually fails in bending **")
 
 
 if __name__ == '__main__':

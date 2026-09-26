@@ -1,19 +1,20 @@
 /**
  * Undo / redo.
  *
- * Until the walls, load arrow and modes have their own modules, their state
- * lives in app.js and restoring a snapshot writes it through app.js setters.
+ * Restoring a snapshot writes each piece of state through its owner's setters
+ * (walls.js, strength.js, settings.js, pose.js); history never assigns to them.
  */
 import { el } from './dom.js';
 import { controls } from './scene.js';
 import { removedSigs, restoreRemovals, syncRemoveUI } from './remove.js';
 import { loadDir, replaceLoadDir, updateLoadArrowMesh, syncLoadUI } from './strength.js';
+import { setLayPlacing, setGizmo } from './pose.js';
+import { part, shade } from './part.js';
 import {
-  part, finMode, finsVisible, drawAugment,
-  setLayPlacing, setFinMode, setFinsVisible, setDrawAugment,
+  finMode, finsVisible, drawAugment, setFinMode, setFinsVisible, setDrawAugment,
   syncFinsToggleUI, syncAugmentUI,
-  setGizmo, shade, refreshFins,
-} from '../app.js';
+} from './settings.js';
+import { refreshFins } from './finbuild.js';
 import { drawnWalls, setDrawnWalls, clearPreview, syncDrawControls } from './walls.js';
 import { hideSuggestions } from './suggest.js';
 

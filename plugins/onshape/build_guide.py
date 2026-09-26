@@ -70,7 +70,7 @@ def subsection(title, intro=None):
         P(intro)
 
 
-def notebox(text, label="Примечание:"):
+def notebox(text, label="Note:"):
     t = Table([[Paragraph(f"<b>{label}</b> {text}", note)]], colWidths=[CW - 20])
     t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), NOTE_BG),
                            ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
@@ -133,13 +133,13 @@ def rib_diagram():
     # ---- side view ----
     bed = 40
     d.add(Rect(10, bed - 6, 300, 6, fillColor=Color(0.6, 0.62, 0.66), strokeColor=None))
-    label(d, 14, bed - 16, "печатный стол", 7, color=FOOT)
+    label(d, 14, bed - 16, "build plate", 7, color=FOOT)
     # part: sloped underside from (40,bed+8) rising to (290,bed+118)
     ux0, uy0, ux1, uy1 = 40, bed + 10, 290, bed + 120
     slope = (uy1 - uy0) / (ux1 - ux0)
     d.add(Polygon([ux0, uy0, ux1, uy1, ux1, 192, ux0 - 25, 192, ux0 - 25, uy0 + 20],
                   fillColor=PART, strokeColor=PART_DK, strokeWidth=0.8))
-    label(d, 70, 170, "деталь", 9, color=PART_DK, bold=True)
+    label(d, 70, 170, "part", 9, color=PART_DK, bold=True)
     gap = 7
     ra, rb = 95, 275
     top = lambda x: uy0 + (x - ux0) * slope - gap
@@ -157,40 +157,40 @@ def rib_diagram():
     from reportlab.graphics.shapes import Group
     ang = math.degrees(math.atan(slope))
     gx = 185
-    g = Group(String(0, 0, "нависание (снизу)", fontName="Helvetica", fontSize=7, fillColor=PART_DK))
+    g = Group(String(0, 0, "overhang (underside)", fontName="Helvetica", fontSize=7, fillColor=PART_DK))
     g.transform = (math.cos(math.radians(ang)), math.sin(math.radians(ang)),
                    -math.sin(math.radians(ang)), math.cos(math.radians(ang)),
                    gx, uy0 + (gx - ux0) * slope + 5)
     d.add(g)
     leader(d, 135, top(135) + gap / 2, 150, 165)
-    label(d, 118, 167, "зазор отламывания", 7)
+    label(d, 118, 167, "breakaway gap", 7)
     leader(d, 108, top(108) + 4, 60, 122)
-    label(d, 14, 125, "перемычки (один слой)", 7)
+    label(d, 14, 125, "tines (one layer)", 7)
     leader(d, 230, bed + 3, 240, bed - 12)
-    label(d, 200, bed - 20, "полка на столе", 7)
-    label(d, 185, bed + 40, "ребро", 9, color=white, bold=True)
-    label(d, 160, 4, "Вид сбоку: верх ребра повторяет нижнюю поверхность", 7.5, anchor="middle", color=FOOT)
+    label(d, 200, bed - 20, "flange on the plate", 7)
+    label(d, 185, bed + 40, "rib", 9, color=white, bold=True)
+    label(d, 160, 4, "Side view: the rib top follows the underside", 7.5, anchor="middle", color=FOOT)
 
     # ---- cross-section ----
     ox, oy = 390, bed
     d.add(Rect(ox - 60, oy - 6, 120, 6, fillColor=Color(0.6, 0.62, 0.66), strokeColor=None))
     d.add(Rect(ox - 45, oy + 118, 90, 40, fillColor=PART, strokeColor=PART_DK, strokeWidth=0.8))
-    label(d, ox, oy + 140, "деталь", 8, anchor="middle", color=PART_DK, bold=True)
+    label(d, ox, oy + 140, "part", 8, anchor="middle", color=PART_DK, bold=True)
     stem, tip = 10, 6
     d.add(Polygon([ox - 30, oy, ox + 30, oy, ox + 30, oy + 7, ox + stem, oy + 7, ox + stem, oy + 88,
                    ox + tip, oy + 88, ox + tip, oy + 111, ox - tip, oy + 111, ox - tip, oy + 88,
                    ox - stem, oy + 88, ox - stem, oy + 7, ox - 30, oy + 7],
                   fillColor=ORANGE, strokeColor=ORANGE_DK, strokeWidth=0.6))
-    for (x, y, t, a) in [(ox + 36, oy + 106, "кромка 0.6 мм, верх 1.5 мм", "start"),
-                         (ox + 36, oy + 60, "стенка 1.0 мм", "start"),
-                         (ox + 36, oy + 10, "полка: высота основания", "start"),
-                         (ox + 36, oy + 122, "зазор", "start")]:
+    for (x, y, t, a) in [(ox + 36, oy + 106, "tip 0.6 mm, top 1.5 mm", "start"),
+                         (ox + 36, oy + 60, "stem 1.0 mm", "start"),
+                         (ox + 36, oy + 10, "flange: base height", "start"),
+                         (ox + 36, oy + 122, "gap", "start")]:
         label(d, x, y, t, 7, anchor=a)
     leader(d, ox + tip, oy + 108, ox + 34, oy + 108)
     leader(d, ox + stem, oy + 62, ox + 34, oy + 62)
     leader(d, ox + 30, oy + 5, ox + 34, oy + 12)
     leader(d, ox + 8, oy + 114, ox + 34, oy + 124)
-    label(d, ox + 10, 4, "Сечение: перевёрнутая T", 7.5, anchor="middle", color=FOOT)
+    label(d, ox + 10, 4, "Cross-section: an upside-down T", 7.5, anchor="middle", color=FOOT)
     return d
 
 
@@ -199,12 +199,12 @@ def fin_diagram():
     d = Drawing(CW, 175)
     bed = 28
     d.add(Rect(40, bed - 6, 400, 6, fillColor=Color(0.6, 0.62, 0.66), strokeColor=None))
-    label(d, 44, bed - 16, "печатный стол", 7, color=FOOT)
+    label(d, 44, bed - 16, "build plate", 7, color=FOOT)
     # part: leaning face from (150,bed) to (215,bed+130); part to the left
     fx0, fy0, fx1, fy1 = 150, bed, 215, bed + 130
     d.add(Polygon([fx0, fy0, fx1, fy1, 90, fy1 + 10, 50, bed + 40], fillColor=PART,
                   strokeColor=PART_DK, strokeWidth=0.8))
-    label(d, 105, bed + 90, "деталь", 9, color=PART_DK, bold=True)
+    label(d, 105, bed + 90, "part", 9, color=PART_DK, bold=True)
     # wall parallel to the face, offset outward
     import math
     dx, dy = fx1 - fx0, fy1 - fy0
@@ -231,16 +231,16 @@ def fin_diagram():
         k = (y - fy0) / dy
         xf = fx0 + dx * k
         d.add(Rect(xf - 4, y, (g + th * 0.5) + 6, 2.2, fillColor=ORANGE_DK, strokeColor=None))
-    label(d, 262, bed + 128, "стенка, округлый верх", 7)
+    label(d, 262, bed + 128, "side fin wall, rounded top", 7)
     leader(d, cx + 4, cy, 258, bed + 130)
-    label(d, 262, bed + 70, "перемычки: горизонтальные,", 7)
-    label(d, 262, bed + 61, "по одному слою, чаще у стола", 7)
+    label(d, 262, bed + 70, "tines: horizontal, one layer each,", 7)
+    label(d, 262, bed + 61, "denser near the plate", 7)
     leader(d, fx0 + dx * (64 / dy) + 10, bed + 65, 258, bed + 68)
-    label(d, 262, bed + 30, "зазор до грани", 7)
+    label(d, 262, bed + 30, "gap to the face", 7)
     leader(d, fx0 + dx * (26 / dy) + 4, bed + 26, 258, bed + 32)
-    label(d, 262, bed + 4, "овальное основание наружу", 7)
+    label(d, 262, bed + 4, "oval base, pushed away from the part", 7)
     leader(d, a0[0] + 80, bed + 4, 258, bed + 7)
-    label(d, 240, 4, "Сечение бокового ребра: наклон повторяет грань", 7.5, anchor="middle", color=FOOT)
+    label(d, 240, 4, "Section across a side fin: it leans with the face it holds", 7.5, anchor="middle", color=FOOT)
     return d
 
 
@@ -286,7 +286,7 @@ def footer(c, doc):
     c.line(LM + 3.6, 51.84, W - RM - 3.6, 51.84)
     c.setFont("Helvetica", 7.5)
     c.setFillColor(FOOT)
-    c.drawCentredString(W / 2, 38, f"{NAME} \u2014 Руководство пользователя \u2014 Southeast Expedition Medical, LLC \u2014 2026")
+    c.drawCentredString(W / 2, 38, f"{NAME} \u2014 User Guide \u2014 Southeast Expedition Medical, LLC \u2014 2026")
     c.restoreState()
 
 
@@ -297,7 +297,7 @@ def first_page(c, doc):
     c.drawCentredString(W / 2, H - 91, NAME)
     c.setFont("Helvetica", 10)
     c.setFillColor(PRIMARY)
-    c.drawString(LM + 2, H - 104, f"{NAME}  \u2022  Руководство пользователя")
+    c.drawString(LM + 2, H - 104, f"{NAME}  \u2022  User Guide")
     draw_icon(c, W - RM - 36, H - 106, 1.5)
     c.setFillColor(PRIMARY)
     c.rect(LM, H - 113, CW, 3, stroke=0, fill=1)
@@ -306,9 +306,9 @@ def first_page(c, doc):
 
 
 doc = BaseDocTemplate(OUT, pagesize=letter, leftMargin=LM, rightMargin=RM, topMargin=0.75 * inch,
-                      bottomMargin=0.95 * inch, title=f"{NAME} - Руководство пользователя",
+                      bottomMargin=0.95 * inch, title=f"{NAME} - User Guide",
                       author="Chris Lee, Southeast Expedition Medical, LLC",
-                      subject="Пользовательская операция Onshape: встроенные отламываемые рёбра поддержки")
+                      subject="Onshape custom feature: designed-in breakaway support fins")
 doc.addPageTemplates([
     PageTemplate(id="first", frames=[Frame(LM, 0.95 * inch, CW, H - 0.95 * inch - 122, id="f1")],
                  onPage=first_page),
@@ -318,178 +318,260 @@ from reportlab.platypus import NextPageTemplate
 story.append(NextPageTemplate("rest"))
 
 # ══════════════════════════════════════════════════════════════════════════════
-P("Copyright © 2026 Chris Lee, Southeast Expedition Medical, LLC. Выпущено по лицензии MIT. Геометрия рёбер перенесена из <b>support-fins</b> Matthew Trahan (лицензия MIT).", copy)
+P("Copyright \u00a9 2026 Chris Lee, Southeast Expedition Medical, LLC. Released under the MIT License. "
+  "Fin geometry ported from <b>support-fins</b> by Matthew Trahan (MIT License).", copy)
 
-section(1, "Обзор")
-P(f"<b>{NAME}</b> - пользовательская операция на панели Onshape Part Studio. Она добавляет отламываемые поддержки "
-  "к детали как настоящую геометрию для печати в прочной наклонной ориентации с "
-  "выключенными поддержками слайсера. Поддержки входят в модель, поэтому одинаково получаются "
-  "в любом слайсере, на любом принтере, из любого филамента.")
-P("Печать плашмя часто даёт самую слабую ориентацию; наклон может увеличить прочность в несколько раз. Но обычно наклонённой детали нужны поддержки слайсера: они оставляют следы, их долго удалять. Эта операция создаёт три вида поддержек для печати под наклоном:")
+section(1, "Overview")
+P(f"<b>{NAME}</b> is a custom feature for your Onshape Part Studio toolbar. It adds breakaway supports "
+  "to a part as real geometry, so the part can be printed in a strong tilted orientation with the "
+  "slicer's own supports turned off. Because the supports are part of the model, they come out the same "
+  "in any slicer, on any printer, in any filament.")
+P("Printing a part flat is often its weakest orientation; tilting it can make it several times stronger, "
+  "but a tilted part normally needs slicer supports that scar the surface and are slow to pick off. "
+  "This feature adds the supports that make the tilted orientation printable, in three kinds:")
 bullets([
-    "<b>Рёбра под нависаниями</b> - тонкие стенки в форме перевёрнутой T под каждым нависанием. Верх повторяет нижнюю поверхность с небольшим зазором, а гребёнка маленьких <b>соединительных перемычек</b> пересекает зазор и удерживает деталь.",
-    "<b>Боковые рёбра поддержки</b> - тонкие стенки у плоской стороны детали, стоящей на ребре или углу. Ряды перемычек не дают ей упасть.",
-    "<b>Опорная площадка</b> - тонкая овальная кайма под деталью, касающейся стола только ребром или точкой, чтобы деталь не оторвалась.",
+    "<b>Overhang ribs</b> \u2014 thin upside-down-T walls under each overhang. The top of each rib follows the "
+    "underside a small gap below it, and a comb of tiny <b>tines</b> reaches across that gap to hold the part.",
+    "<b>Side bracing fins</b> \u2014 thin walls standing beside a flat side of a part that is tipped onto an "
+    "edge or corner, gripping it with rows of tines so it cannot fall over.",
+    "<b>Bed pad</b> \u2014 a thin oval brim under a part that touches the bed only along an edge or at a point, "
+    "so it does not peel off.",
 ])
-P("Используется техника встроенного «ребра поддержки» Slant3D. Это перенос браузерного приложения <b>support-fins</b> (printfins.com, github.com/gittrahan/support-fins) на нативную геометрию Onshape.")
-notebox("Нужны твёрдые тела: собственные детали Onshape или импортированные STEP, Parasolid и подобные CAD-файлы. STL и другие сетки импортируются в Onshape как сеточные тела, которые операция обработать не может. Для STL используйте printfins.com.")
+P("The technique is Slant3D's designed-in \"support fin\". The feature is a port of the "
+  "<b>support-fins</b> browser app (printfins.com, github.com/gittrahan/support-fins) to native Onshape "
+  "geometry.")
+notebox("The feature needs solid parts: native Onshape parts or imported STEP, Parasolid and similar CAD "
+        "files. STL and other mesh files import into Onshape as mesh bodies, which it cannot process. For an "
+        "STL, use printfins.com instead.")
 
-section(2, "Пошаговый процесс")
-P("Выполните шаги по порядку:")
+section(2, "Step-by-Step Workflow")
+P("Complete these steps in order:")
 steps([
-    "Один раз добавьте операцию на панель: <b>Пользовательские операции (Custom features)</b> " + ARROW + " откройте документ <b>Fin Supports</b> " + ARROW + " выберите <b>Support-Fins FS</b>.",
-    "В Part Studio ориентируйте деталь как при печати, например операцией <b>Преобразование (Transform)</b>. По умолчанию печатным столом служит плоскость <b>Top</b>.",
-    "Откройте <b>Пользовательские операции (Custom features)</b> " + ARROW + " <b>Support-Fins FS</b> и выберите деталь в поле <b>Детали для поддержки</b>.",
-    "В <b>Настройках печати</b> задайте <b>Высоту слоя</b> из слайсера и выберите <b>Материал</b>.",
-    "Проверьте предварительный вид. Включите <b>Показать найденные нависания</b>, чтобы увидеть найденные грани. Настройте <b>Рёбра под нависаниями</b> и включите <b>Боковые рёбра поддержки</b>, если деталь стоит на ребре или углу.",
-    "Нажмите <b>OK</b>. Поддержки появятся как оранжевые детали с именами <i>&lt;деталь&gt; поддержка 1, 2 …</i>; сообщение укажет, что построено.",
-    "Выберите деталь <b>и</b> все её поддержки, щёлкните правой кнопкой " + ARROW + " <b>Экспорт (Export)</b>, выберите STL и экспортируйте одним файлом.",
-    "Нарезайте с <b>выключенными</b> поддержками. После печати отогните каждую поддержку вбок, чтобы отломить её.",
+    "Add the feature to your toolbar once: <b>Custom features</b> (toolbar) " + ARROW + " open the "
+    "<b>Fin Supports</b> document " + ARROW + " select <b>Support-Fins FS</b>.",
+    "In your Part Studio, orient the part the way it will sit on the printer, for example with a "
+    "<b>Transform</b> feature. By default the <b>Top</b> plane is the build plate.",
+    "Open <b>Custom features</b> " + ARROW + " <b>Support-Fins FS</b> and select the part under "
+    "<b>Parts to support</b>.",
+    "Under <b>Print settings</b>, set <b>Layer height</b> to your slicer's layer height and choose the "
+    "<b>Material</b>.",
+    "Check the preview. Turn on <b>Show detected overhangs</b> to see which faces were found. Adjust "
+    "<b>Overhang ribs</b>, and turn on <b>Side bracing fins</b> if the part rests on an edge or corner.",
+    "Click <b>OK</b>. The supports appear as orange parts named <i>&lt;part&gt; support 1, 2 \u2026</i>, and "
+    "a message reports what was built.",
+    "Select the part <b>and</b> all of its supports, right-click " + ARROW + " <b>Export</b>, choose STL, "
+    "and export them as one file.",
+    "Slice with supports <b>off</b>. After printing, bend each support sideways to snap it off.",
 ])
 
-section(3, "Параметры диалога операции")
-subsection("3.1  Выбор объектов", "Находятся вверху диалога, над группами настроек.")
-table(["Параметр", "Описание"], [
-    ["Детали для поддержки", "Одно или несколько твёрдых тел, уже ориентированных для печати. Для каждой детали создаются свои поддержки. Сами детали не изменяются."],
-    ["Печатный стол", "Плоскость, плоская грань или соединитель сопряжения, задающий направление стола. Оставьте пустым для плоскости Top. Верх направлен к детали."],
-    ["Обратить направление печати", "Меняет направление вверх, если поддержки появляются с другой стороны."],
-    ["Установить деталь на стол", "По умолчанию включено. Нижняя точка детали считается поверхностью стола: важно только направление стола, а не положение. Выключите для использования фактического положения стола."],
+section(3, "Feature Dialog Options")
+subsection("3.1  Selections", "These sit at the top of the dialog, above the grouped settings.")
+table(["Option", "Description"], [
+    ["Parts to support", "One or more solid parts, already positioned the way they will print. Each part "
+     "gets its own supports. The parts themselves are never modified."],
+    ["Build plate", "A plane, flat face or mate connector whose direction is the printer bed. Leave empty to "
+     "use the Top plane. Up is taken to be the side the part is on."],
+    ["Flip build direction", "Reverses which way is up, if the supports come out on the wrong side."],
+    ["Seat part on plate", "On by default. Treats the part's lowest point as the bed surface, so only the "
+     "plate's direction matters, not its position. Turn off to use the plate exactly where it is."],
 ], [1.3, 4])
 
-subsection("3.2  Рёбра под нависаниями", "Эта группа управляет рёбрами под нависающими гранями.")
-table(["Параметр", "Описание"], [
-    ["Автоматически находить нависания", "Находит слишком пологие для печати без поддержки грани, направленные вниз, и ставит под ними рёбра."],
-    ["Угол нависания (от стола)", "Направленные вниз грани с меньшим углом к столу получают рёбра. По умолчанию 45° - обычный предел печати без поддержки. Увеличьте угол для большего числа поддержек."],
-    ["Исключить грани", "Найденные грани, которым не нужны рёбра: например, видимая поверхность или участок, хорошо печатающийся мостом."],
-    ["Добавить нависающие грани", "Грани для поддержки, даже если они не найдены автоматически. Можно добавить любую грань, хотя бы частично направленную вниз. Для добавленных граней допускаются более короткие рёбра (4 мм вместо 7 мм)."],
-    ["Макс. пролёт без поддержки", "Максимальный участок нависания между рёбрами. Под широким нависанием создаётся ряд рёбер с шагом не больше этого значения. По умолчанию 12 мм (0.5 дюйма)."],
-    ["Соединительные перемычки", "По умолчанию включены. Маленькие мостики высотой в один слой от верха ребра к детали. При выключении создаются обычные отламываемые рёбра, на которые опирается деталь."],
-    ["Шаг соединительных перемычек", "Расстояние между перемычками у концов ребра; в середине вдвое больше, до 5 мм. Меньше - прочнее удержание, но больше следов. По умолчанию 2 мм."],
-    ["Макс. стенок на деталь", "Предельное число рёбер для одной детали. По умолчанию 60."],
+subsection("3.2  Overhang Ribs", "This group controls the ribs placed under overhanging faces.")
+table(["Option", "Description"], [
+    ["Auto-detect overhangs", "Finds downward faces too flat to print unsupported and puts ribs under them."],
+    ["Overhang angle (from plate)", "Downward faces flatter than this, measured from the bed, get ribs. "
+     "Default 45\u00b0, the usual limit for printing without support. Raise it for more supports."],
+    ["Exclude faces", "Detected faces that should not get ribs, such as a cosmetic surface or one that "
+     "bridges well on its own."],
+    ["Add overhang faces", "Faces to support even if detection skipped them. Any face that points at all "
+     "downward can be added. Added faces also accept shorter ribs (4 mm instead of 7 mm)."],
+    ["Max unsupported span", "The widest stretch of overhang left between two ribs. A wide overhang gets a "
+     "row of ribs no farther apart than this. Default 12 mm (0.5 in)."],
+    ["Gripping tines", "On by default. Tiny one-layer bridges from the rib top into the part. Off gives "
+     "plain breakaway ribs that the part simply rests on."],
+    ["Tine spacing", "Distance between tines near the ends of each rib; the middle is spaced twice as far, "
+     "up to 5 mm. Smaller grips harder but leaves more marks. Default 2 mm."],
+    ["Max walls per part", "A safety cap on how many ribs one part can get. Default 60."],
 ], [1.3, 4])
 
-subsection("3.3  Боковые рёбра поддержки", "Группа свёрнута, рёбра выключены по умолчанию. Об их применении см. раздел 4.3.")
-table(["Параметр", "Описание"], [
-    ["Боковые рёбра", "<b>Выкл.</b>, <b>Авто</b> (операция выбирает грани) или <b>Выбранные грани</b> (вы выбираете их сами)."],
-    ["Макс. мест установки рёбер", "Только Авто. Число сторон детали для установки рёбер. По умолчанию 2: поддержка противоположных сторон, обычно этого достаточно."],
-    ["Грани для укрепления", "Только Выбранные грани. Плоские стороны для установки рёбер. Выбирайте противоположные стороны, чтобы деталь не опрокинулась."],
-    ["Макс. наклон грани (от вертикали)", "Предельный наклон грани от вертикали для ребра. По умолчанию 45°. Ребро наклоняется вместе с гранью, поэтому при угле больше 45° само становится нависанием."],
+subsection("3.3  Side Bracing Fins", "Collapsed and off by default. See Section 4.3 for when to use them.")
+table(["Option", "Description"], [
+    ["Side fins", "<b>Off</b>, <b>Auto</b> (the feature picks the faces) or <b>Selected faces</b> (you pick "
+     "them)."],
+    ["Max fin sites", "Auto only. How many sides of the part may get a fin. The default of 2 braces opposite "
+     "sides, which is usually enough."],
+    ["Faces to brace", "Selected faces only. The flat sides to put a fin against. Pick faces on opposite sides "
+     "so the part cannot tip either way."],
+    ["Max face lean (from vertical)", "The steepest face lean, measured from vertical, that can take a fin. "
+     "Default 45\u00b0. The fin leans with its face, so past 45\u00b0 the fin itself becomes an overhang."],
 ], [1.3, 4])
 
-subsection("3.4  Опорная площадка")
-table(["Параметр", "Описание"], [
-    ["Опорная площадка", "<b>Авто</b> добавляет площадку, только если плоский контакт детали со столом меньше 60 мм<super>2</super>, то есть деталь стоит на ребре или точке. <b>Всегда</b> и <b>Никогда</b> переопределяют это правило."],
+subsection("3.4  Bed Pad")
+table(["Option", "Description"], [
+    ["Bed pad", "<b>Auto</b> adds a pad only when the part has less than 60 mm<super>2</super> of flat contact "
+     "with the bed, meaning it rests on an edge or a point. <b>Always</b> and <b>Never</b> override that."],
 ], [1.3, 4])
 
-subsection("3.5  Настройки печати")
-table(["Параметр", "Описание"], [
-    ["Высота слоя (высота перемычек)", "Укажите высоту слоя из слайсера. Каждая перемычка имеет высоту ровно в один слой и совмещена с сеткой слоёв, поэтому печатается одной нитью и аккуратно отламывается."],
-    ["Материал", "Задаёт зазоры. PETG прилипает к поддержкам намного сильнее PLA, поэтому для него зазоры больше, перемычки боковых рёбер входят менее глубоко, а площадка немного отступает от детали. <b>Свой профиль</b> открывает все значения."],
-    ["Зазор поддержки", "Только Свой профиль. Воздушный зазор между поддержками и деталью."],
-    ["Глубина перемычек ребра / бокового ребра", "Только Свой профиль. Глубина входа перемычек в деталь. Меньше - меньше следов и слабее удержание."],
-    ["Высота основания / Захват площадки", "Только Свой профиль. Высота элементов на столе (полки рёбер и площадка одной высоты, без ступеньки) и глубина пересечения площадки с низом детали. Отрицательный захват оставляет зазор. Высота основания округляется до целых слоёв."],
-    ["Показать найденные нависания", "Подсвечивает найденные нависающие грани красным."],
+subsection("3.5  Print Settings")
+table(["Option", "Description"], [
+    ["Layer height (tine height)", "Set this to your slicer's layer height. Each tine is exactly one layer tall "
+     "and lined up with the layers, so it prints as a single strand that snaps clean."],
+    ["Material", "Sets the clearances. PETG sticks to supports much harder than PLA, so it gets bigger gaps, "
+     "shallower side-fin tines and a pad that stands just off the part. <b>Custom</b> shows every value."],
+    ["Support gap", "Custom only. Air gap between the supports and the part."],
+    ["Rib tine bite / Side fin tine bite", "Custom only. How far tines reach into the part. Smaller leaves "
+     "smaller marks and grips less."],
+    ["Base height / Pad grab", "Custom only. Height of everything lying on the bed (the rib flanges and the "
+     "pad share it, so they meet with no step), and how far the pad overlaps the part's underside. A negative "
+     "grab leaves a gap instead. Base height is rounded to whole layers."],
+    ["Show detected overhangs", "Highlights the overhang faces that were found, in red."],
 ], [1.3, 4])
-P("В профилях материалов используются значения:")
-table(["Настройка", "PLA", "PETG"], [
-    ["Зазор поддержки", "0.2 мм", "0.3 мм"],
-    ["Глубина перемычек ребра", "0.5 мм", "0.5 мм"],
-    ["Глубина перемычек бокового ребра", "0.3 мм", "0.15 мм"],
-    ["Высота основания (полки + площадка)", "0.6 мм", "0.4 мм"],
-    ["Захват площадки", "+0.05 мм (лёгкое соединение)", "−0.1 мм (зазор, контакт только на опорном ребре)"],
+P("The material presets use these values:")
+table(["Setting", "PLA", "PETG"], [
+    ["Support gap", "0.2 mm", "0.3 mm"],
+    ["Rib tine bite", "0.5 mm", "0.5 mm"],
+    ["Side fin tine bite", "0.3 mm", "0.15 mm"],
+    ["Base height (flanges + pad)", "0.6 mm", "0.4 mm"],
+    ["Pad grab", "+0.05 mm (tacked on)", "\u22120.1 mm (gap, touching only at the resting edge)"],
 ], [1.3, 1.6, 2.4])
 
-section(4, "Как строятся поддержки")
-subsection("4.1  Рёбра под нависаниями")
-P("Находятся все направленные вниз грани с углом меньше порога нависания; соприкасающиеся грани объединяются. Нависания меньше 12 мм<super>2</super> пропускаются. Для каждого нависания:")
+section(4, "How the Supports Are Built")
+subsection("4.1  Overhang ribs")
+P("Each downward face flatter than the overhang angle is found, faces that touch are grouped into one "
+  "overhang, and overhangs smaller than 12 mm<super>2</super> are ignored. For each overhang:")
 bullets([
-    "<b>Направление.</b> На наклонной нижней поверхности рёбра идут вдоль склона; на почти плоской - вдоль длинной стороны. Под большой криволинейной поверхностью, например лежащей трубой, создаётся одно ребро под нижней линией.",
-    "<b>Контур.</b> Вдоль каждого ребра нижняя поверхность измеряется через 1 мм лучами вертикально вверх от стола. Ребро ставится только там, где луч первым пересекает само нависание, то есть путь до стола свободен.",
-    "<b>Зазор.</b> Из каждого ребра вычитается копия детали, расширенная наружу на величину зазора. Остаток нигде не касается детали, включая боковые стороны.",
-    "<b>Ограничения размеров.</b> Рёбра короче 7 мм пропускаются. При высоте меньше 1.5 мм ребро становится низкой стенкой на тонкой широкой кайме; ниже 0.6 мм первые слои печатаются без помощи, и ничего не добавляется.",
+    "<b>Direction.</b> On a sloped underside the ribs run down the slope; on a nearly flat one they run along "
+    "its longer side. A large curved underside, such as a tube lying down, gets a single rib under its "
+    "lowest line.",
+    "<b>Contour.</b> Along each rib the underside is sampled every 1 mm by firing a ray straight up from the "
+    "plate. A rib is only placed where the first thing the ray hits is the overhang itself, so the path "
+    "to the plate is clear.",
+    "<b>Clearance.</b> A copy of the part, grown outward by the support gap, is subtracted from every rib. "
+    "Whatever is left cannot touch the part anywhere, including the flanks.",
+    "<b>Size limits.</b> Ribs shorter than 7 mm are skipped. Under 1.5 mm tall a rib becomes a squat wall on "
+    "a thin, wide brim; under 0.6 mm the first layers print without help and nothing is added.",
 ])
-fig(rib_diagram(), "Рисунок 1. Ребро под нависанием: вид сбоку (слева) и сечение (справа).")
+fig(rib_diagram(), "Figure 1. An overhang rib: side view (left) and cross-section (right).")
 
-subsection("4.2  Соединительные перемычки")
-P("Перемычка - небольшой блок высотой в один слой и шириной 0.5 мм. Он стоит на верху ребра, входит в него на 0.3 мм и достигает детали. В пределах одного слоя сопло печатает непрерывную нить: ребро, перемычка, деталь и обратно, без ретракта. Нить достаточно прочна, чтобы удерживать деталь, и аккуратно ломается при отгибании ребра.")
+subsection("4.2  Tines")
+P("A tine is a small block one layer tall and 0.5 mm wide. It sits on the rib's top, sinks 0.3 mm back into "
+  "the rib, and reaches into the part. Because it lies flat in a single layer, the nozzle prints it as one "
+  "continuous strand: rib, tine, part and back, with no retraction. That strand is strong enough to hold "
+  "the part, and it bends and snaps cleanly when the rib is removed.")
 bullets([
-    "Каждая перемычка привязана к сетке слоёв и никогда не пересекает два слоя.",
-    "Перемычка добавляется только после проверки, что её конец внутри детали. На почти плоской нижней поверхности горизонтальной перемычке не за что зацепиться, поэтому плоские нависания получают обычные рёбра.",
-    "В пределах 8 мм от концов ребра перемычки стоят чаще: следы скрываются на рёбрах и углах детали. В середине шаг больше. У каждого ребра не меньше трёх перемычек.",
+    "Each tine is snapped to the layer grid, so it never straddles two layers.",
+    "A tine is only added where its tip is confirmed inside the part. On a nearly flat underside a sideways "
+    "poke finds nothing to grip, so flat overhangs get plain ribs.",
+    "Tines are packed tightly within 8 mm of each end of a rib, where the marks hide on edges and corners, "
+    "and spaced out across the middle. Every rib gets at least three.",
 ])
 
-subsection("4.3  Боковые рёбра поддержки")
-P("У детали на ребре или углу малая площадь опоры: сопло может опрокинуть её, либо она оторвётся во время печати. Рёбра снизу плохо защищают от опрокидывания. Боковое ребро удерживает деталь сбоку:")
+subsection("4.3  Side bracing fins")
+P("A part tipped onto an edge or corner has a tiny footprint and can be knocked over by the nozzle or peel "
+  "off partway through the print. Ribs only push up from underneath, so they do little to stop it tipping. "
+  "A side fin holds the part from beside it instead:")
 bullets([
-    "Стенка толщиной 1.2 мм стоит параллельно плоской стороне детали, на расстоянии зазора поддержки, на овальном основании глубиной 9 мм. Если сторона наклонена, ребро наклонено вместе с ней.",
-    "Ряды горизонтальных перемычек пересекают зазор и сплавляются с боком детали: восемь рядов в первых 6 мм над столом, затем реже. У стола деталь наименее устойчива.",
-    "Длина ребра не больше 25 мм, а высота не превышает высоту грани по всей длине ребра, чтобы за ним везде была грань. На наклонённой квадратной грани в форме ромба ребро ставится посередине, где грань выше.",
-    "Ребро отменяется, а не укорачивается, если оно или его основание коснётся другого участка модели либо если удерживать грань смогут меньше трёх перемычек.",
+    "A 1.2 mm wall stands parallel to a flat side of the part, one support gap away, on an oval base "
+    "9 mm deep. If the side leans, the fin leans with it.",
+    "Rows of horizontal tines cross the gap and fuse into the side: eight rows packed into the first "
+    "6 mm above the plate, then spreading out. The part is least stable near the bed.",
+    "The fin is at most 25 mm long and only as tall as the face reaches across its whole length, so the "
+    "entire fin has face behind it. On a tilted square face, which sits diamond-shaped, it goes in the "
+    "middle where the face is tallest.",
+    "A fin is abandoned, not shortened, if it or its base would touch another part of the model, or if "
+    "fewer than three tines can grip.",
 ])
-fig(fin_diagram(), "Рисунок 2. Боковое ребро рядом с наклонной гранью.")
-P("<b>Когда применять.</b> Включайте боковые рёбра вместе с опорной площадкой для детали на ребре или углу. <b>Авто</b> ранжирует плоские грани по доступной площади удержания и выбирает не больше <b>Макс. мест установки рёбер</b> с разницей направлений от 60° и расстоянием от 12 мм. <b>Выбранные грани</b> проверяет каждую выбранную грань и сообщает причины отказа. Грань шириной от 55 мм получает ряд рёбер с шагом около 55 мм вместо одного.")
-notebox("Подходит плоская грань не меньше 4 × 4 мм с наклоном от вертикали не больше <b>Макс. наклона грани</b>, доходящая почти до стола, со свободным пространством рядом.")
+fig(fin_diagram(), "Figure 2. A side fin standing beside a leaning face.")
+P("<b>When to use them.</b> Turn side fins on when the part balances on an edge or corner, and pair them "
+  "with the bed pad. <b>Auto</b> ranks the flat faces by how much grippable wall they offer and picks up to "
+  "<b>Max fin sites</b> faces pointing at least 60\u00b0 apart and 12 mm apart. <b>Selected faces</b> tries "
+  "every face you pick and reports any it could not use, with the reason. A face 55 mm or wider gets a "
+  "row of fins about 55 mm apart instead of one.")
+notebox("A face can take a fin if it is flat, at least 4 \u00d7 4 mm, leans no more than the <b>Max face "
+        "lean</b> from vertical, reaches down near the bed, and has open space beside it.")
 
-subsection("4.4  Опорная площадка")
-P("Площадка - овал вокруг контакта детали со столом: длинный и узкий под ребром, круглый под точкой, с выступом 4 мм за контакт. Вне детали площадка имеет полную высоту для сцепления со столом. Под деталью её верх повторяет нижнюю поверхность и пересекает её на величину захвата: лёгкое соединение удерживает деталь, но потом отслаивается. Высота площадки равна высоте полок рёбер, поэтому они соединяются без ступеньки.")
+subsection("4.4  Bed pad")
+P("The pad is an oval fitted around where the part touches the bed: long and thin under an edge, round "
+  "under a point, reaching 4 mm past the contact. Away from the part it is full height for bed grip; under "
+  "the part its top follows the underside and overlaps it by the pad grab, a light tack that holds the "
+  "part down but peels off afterward. The pad is the same height as the rib flanges, so where the two meet "
+  "they merge flush, with no step.")
 
-section(5, "Результат")
-P("Поддержки добавляются как новые детали. Исходная деталь не изменяется.")
-table(["Элемент", "Сведения"], [
-    ["Детали поддержек", "Оранжевые, с именами <i>&lt;деталь&gt; поддержка 1, 2 …</i>. Соприкасающиеся рёбра, перемычки и площадка объединяются в одну деталь; раздельные поддержки остаются отдельными."],
-    ["Сообщение операции", "Указывает число найденных нависаний, рёбер, перемычек, боковых рёбер и площадок, а также нависания без поддержки и причины."],
-    ["Экспорт", "Экспортируйте деталь вместе со всеми поддержками в <b>один STL</b>. Перемычки и площадка слегка пересекают деталь; слайсер объединяет их в одно тело."],
+section(5, "Output")
+P("Supports are added as new parts. The original part is never modified.")
+table(["Item", "Details"], [
+    ["Support parts", "Named <i>&lt;part&gt; support 1, 2 \u2026</i> and colored orange. Ribs, tines, fins "
+     "and pad that touch are merged into one part; separate supports stay separate."],
+    ["Feature message", "Reports the number of overhangs found, ribs, tines, side fins and pads, plus any "
+     "overhangs left unsupported and why."],
+    ["Export", "Export the part together with all of its supports as <b>one STL</b>. The supports overlap the "
+     "part slightly at the tines and pad; the slicer merges them into one solid."],
 ], [1.3, 4])
-notebox("При экспорте 3MF или отдельных файлов слайсер может загрузить поддержки как отдельные объекты. Объедините их в один объект или экспортируйте один STL, чтобы перемычки сплавились с деталью.")
+notebox("If you export a 3MF or separate files, the slicer may load the supports as separate objects. "
+        "Merge them into one object, or export as a single STL, so the tines fuse to the part.")
 
-section(6, "Печать и удаление")
+section(6, "Printing and Removal")
 bullets([
-    "Нарезайте с <b>выключенными</b> поддержками слайсера. Поддержки уже есть в модели.",
-    "Согласуйте высоту слоя слайсера <i>и</i> первого слоя с настройкой <b>Высота слоя</b>, чтобы каждая перемычка занимала ровно один слой.",
-    "Для удаления ребра отогните его вбок, в плоскости слоёв. Перемычки устают и ломаются, оставляя небольшие слабые следы. Если тянуть прямо, они вырываются.",
-    "Отслаивайте опорную площадку от внешнего края к детали.",
-    "Для PETG выберите материал PETG: он соединяется с поддержками намного сильнее PLA.",
+    "Slice with the slicer's supports <b>off</b>. The model already carries its supports.",
+    "Match the slicer's layer height, <i>and</i> its first-layer height, to the <b>Layer height</b> setting so "
+    "every tine lands on exactly one layer.",
+    "To remove a rib or fin, bend it sideways, in the plane of the layers. The tines fatigue and snap, "
+    "leaving small, faint marks. Pulling straight off tears them out instead.",
+    "Peel the bed pad off from its outer edge toward the part.",
+    "For PETG, choose the PETG material. PETG bonds to supports far harder than PLA does.",
 ])
 
-section(7, "Устранение проблем")
-P("Операция сообщает, что удалось и не удалось построить. В таблице приведены сообщения, причины и способы устранения.")
-table(["Сообщение", "Причина", "Что делать"], [
-    ["Выберите хотя бы одну деталь для поддержки.", "Поле «Детали для поддержки» пусто.", "Выберите твёрдое тело."],
-    ["Поддержки не созданы.", "При этих настройках поддержки не нужны или не подходят.",
-     "Проверьте «Показать найденные нависания». Увеличьте угол нависания, добавьте грани вручную или включите боковые рёбра."],
-    ["N областей без стенки", "Нависание слишком мало, низко или находится над другим участком модели, а не над столом.", "Ожидаемо для участков, печатающихся мостом. Используйте «Добавить нависающие грани» для короткого ребра или переориентируйте деталь."],
-    ["Деталь выходит ниже выбранного стола", "«Установить деталь на стол» выключено, деталь уходит ниже стола.",
-     "Включите «Установить деталь на стол» или переместите стол."],
-    ["Не удалось расширить деталь для зазора", "Не удалось расширить деталь на величину зазора, поэтому вырезан только вертикальный зазор.", "Проверьте, что боковые стороны рёбер не касаются детали."],
-    ["Не удалось вырезать зазор; рёбра под нависаниями удалены.", "На этой геометрии не удалось вырезать зазор.",
-     "Упростите мелкие элементы у нависания или немного измените зазор."],
-    ["Не удалось объединить поддержки", "Части поддержек не объединились; перемычки остались отдельными деталями.",
-     "Экспортируйте всё вместе: слайсер объединит их."],
-    ["Боковое ребро не подошло", "Ни одна грань не соответствует требованиям боковых рёбер (раздел 4.3).",
-     "Выберите грани вручную или увеличьте «Макс. наклон грани»."],
-    ["Боковое ребро, грань N: наклон превышает Макс. наклон грани", "Грань слишком сильно отклонена от вертикали.",
-     "Увеличьте «Макс. наклон грани» или укрепите другую грань."],
-    ["Боковое ребро, грань N: ребро или его основание коснётся другого участка модели",
-     "Рядом с гранью нет свободного пространства.", "Выберите внешнюю грань детали."],
-    ["Боковое ребро, грань N: меньше 3 перемычек могут удерживать грань", "Грань слишком мала или имеет неудобную для захвата форму.", "Выберите более крупную грань."],
-    ["Боковое ребро, грань N: грань слишком близко к столу / слишком короткая / слишком узкая",
-     "Недостаточно поверхности для установки ребра.", "Выберите более высокую и широкую грань."],
+section(7, "Troubleshooting")
+P("The feature reports what it built, and anything it could not build, in a message on the feature. The "
+  "table lists each message with its cause and what to do.")
+table(["Message", "Cause", "Remedy"], [
+    ["Select at least one part to support.", "Parts to support is empty.", "Select a solid part."],
+    ["No supports generated.", "Nothing needed or could take a support at these settings.",
+     "Check Show detected overhangs. Raise the overhang angle, add faces manually, or turn on side fins."],
+    ["N region(s) got no wall", "An overhang was too small, too low, or over another part of the model "
+     "rather than the plate.", "Expected for features that bridge. Use Add overhang faces to force a short "
+     "rib, or reorient the part."],
+    ["Part extends below the selected plate", "Seat part on plate is off and the part dips below the plate.",
+     "Turn Seat part on plate on, or move the plate."],
+    ["Could not offset the part for clearance", "The part could not be grown by the gap, so only a vertical gap "
+     "was cut.", "Check that the rib sides stand clear of the part."],
+    ["Clearance cut failed; overhang ribs were removed.", "The clearance cut failed on this geometry.",
+     "Simplify small features near the overhang, or try a slightly different gap."],
+    ["Supports could not be merged", "The support pieces could not be combined; tines remain separate parts.",
+     "Export them all together; the slicer will merge them."],
+    ["No side fin fit", "No face met the side fin requirements (Section 4.3).",
+     "Select faces manually, or raise Max face lean."],
+    ["Side fin, face N: leans more than the Max face lean", "The face is too far from vertical.",
+     "Raise Max face lean, or brace a different face."],
+    ["Side fin, face N: the fin or its foot would touch another part of the model",
+     "There is no open space beside the face.", "Pick a face on the outside of the part."],
+    ["Side fin, face N: fewer than 3 tines could grip the face", "The face is too small or oddly shaped for a "
+     "grip.", "Pick a larger face."],
+    ["Side fin, face N: face is too close to the bed / too short / too narrow",
+     "Not enough face to stand a fin against.", "Pick a taller, wider face."],
 ], [1.5, 1.8, 1.8])
-notebox("В сообщениях о боковых рёбрах грани пронумерованы в порядке, в котором Onshape возвращает выбранные объекты.")
+notebox("Faces in the side fin messages are numbered in the order Onshape returns your selection.")
 
-section(8, "Советы и рекомендации")
+section(8, "Tips and Best Practices")
 bullets([
-    "Сначала ориентируйте, затем добавляйте поддержки. Операция не выбирает ориентацию. Только вы знаете направление нагрузки и ориентацию, которая обеспечит прочность.",
-    "По возможности располагайте нависания на рёбрах и углах. Здесь перемычки стоят чаще, а их следы менее заметны.",
-    "Нижняя поверхность под углом ровно 45° считается самонесущей. Увеличьте угол нависания на один-два градуса, чтобы всё же добавить рёбра.",
-    "Длинным деталям нужна поддержка с двух сторон. Укрепляйте противоположные грани боковыми рёбрами, чтобы деталь не скручивалась.",
-    "Если рёбра оставляют слишком много следов, увеличьте <b>Шаг соединительных перемычек</b>; если деталь смещается при печати, уменьшите его.",
-    "Согласуйте Высоту слоя со слайсером. Перемычка в двух слоях крепче соединяется с деталью и оставляет более заметные следы.",
+    "Orient first, then support. The feature never chooses the orientation. Only you know which way the part "
+    "will be loaded, and so which orientation makes it strong.",
+    "Put overhangs on edges and corners where you can. That is where the tines are packed, and where their "
+    "marks are hardest to see.",
+    "A part whose underside sits at exactly 45\u00b0 counts as self-supporting. Raise the overhang angle a "
+    "degree or two to add ribs to it anyway.",
+    "Long parts want support on both sides. With side fins, brace opposite faces so the part cannot twist.",
+    "If the ribs leave too many marks, increase <b>Tine spacing</b>; if the part shifts during printing, "
+    "decrease it.",
+    "Keep the Layer height setting in step with the slicer. A tine that spans two layers bonds harder and "
+    "marks worse.",
 ])
 
-section(9, "Авторы и лицензия")
-P("Геометрия, размеры и правила размещения рёбер перенесены из <b>support-fins</b> Matthew Trahan (github.com/gittrahan/support-fins, лицензия MIT), автоматизирующего технику встроенных рёбер поддержки Slant3D.")
-P(f"Этот FeatureScript выпущен по <b>лицензии MIT</b>.")
+section(9, "Credits and License")
+P("Fin geometry, dimensions and placement rules are ported from <b>support-fins</b> by Matthew Trahan "
+  "(github.com/gittrahan/support-fins, MIT License), which automates Slant3D's designed-in support fin "
+  "technique.")
+P(f"This FeatureScript is released under the <b>MIT License</b>.")
 P("Copyright \u00a9 2026 Chris Lee, Southeast Expedition Medical, LLC")
 P("Permission is hereby granted, free of charge, to any person obtaining a copy of this software to deal in "
   "the Software without restriction, including without limitation the rights to use, copy, modify, merge, "
@@ -499,4 +581,4 @@ P("Permission is hereby granted, free of charge, to any person obtaining a copy 
 P('THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.')
 
 doc.build(story)
-print("записан", OUT)
+print("wrote", OUT)

@@ -84,21 +84,21 @@ def probe_region(mesh, line, big):
 
 
 def main(paths):
-    print(f"{'деталь':>26} {'обл.':>4} {'стор.':>5} " +
-          " ".join(f"h={h:<4g}" for h in HEIGHTS) + "   доля мест для перемычек%")
+    print(f"{'part':>26} {'reg':>4} {'side':>5} " +
+          " ".join(f"h={h:<4g}" for h in HEIGHTS) + "   tinable%")
     for path in paths:
         mesh = load(path)
         big = float(np.linalg.norm(mesh.extents)) + 10.0
         regs = regions_of(mesh)
         name = path.split('/')[-1]
         if not regs:
-            print(f"{name:>26}    -   (нет областей нависания)")
+            print(f"{name:>26}    -   (no overhang regions)")
             continue
         regs = sorted(regs, key=lambda c: -mesh.area_faces[c].sum())[:3]
         for ri, r in enumerate(regs):
             line = contact_line(region_points(mesh, r))
             if line is None or len(line) < 3:
-                print(f"{name:>26} {ri:>4}   (нет линии контакта)")
+                print(f"{name:>26} {ri:>4}   (no contact line)")
                 continue
             b = probe_region(mesh, line, big)
             if b is None:
@@ -110,7 +110,7 @@ def main(paths):
                     med.append(np.median(v) if v else np.nan)
                     tot += len(line) - 2
                     tin += sum(1 for d in v if TH / 2 < d <= REACH_MAX)
-                cells = " ".join(f"{m:6.2f}" if not np.isnan(m) else "   н/д"
+                cells = " ".join(f"{m:6.2f}" if not np.isnan(m) else "   n/a"
                                  for m in med)
                 pct = 100.0 * tin / max(1, tot)
                 print(f"{name:>26} {ri:>4} {'+s' if side == 0 else '-s':>5} "

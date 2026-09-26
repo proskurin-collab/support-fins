@@ -240,14 +240,14 @@ function alignQuality(cross) {
   // from the plate: within 30deg of in-plane reads "well aligned".
   if (cross <= 0.5) {
     return { quality: 'good',
-      text: 'Нагрузка направлена вдоль слоёв — в направлении наибольшей прочности. Хорошо.' };
+      text: 'The load runs along the layers — the strong direction. Good.' };
   }
   if (cross <= 0.866) {
     return { quality: 'mixed',
-      text: 'Нагрузка частично направлена поперёк слоёв.' };
+      text: 'The load partly crosses the layers.' };
   }
   return { quality: 'poor',
-    text: 'Нагрузка направлена прямо поперёк слоёв — здесь напечатанные детали разрушаются в первую очередь.' };
+    text: 'The load pulls straight across the layers — where prints split first.' };
 }
 
 /**

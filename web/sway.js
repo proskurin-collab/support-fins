@@ -216,7 +216,7 @@ function lowestHit(tris, fr, uLo, uHi, outline) {
 export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   const S = settings(opts);
   if (Math.abs(p.n.z) > leanCut()) {
-    return { ok: false, reason: 'эта грань слишком наклонена для распорки — выберите вертикальную сторону' };
+    return { ok: false, reason: 'that face leans too far to stand a brace against — pick an upright side' };
   }
   const fr = { ...frameOf(p), uDir: { x: p.u.x, y: p.u.y } };
 
@@ -228,11 +228,11 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
       if (z > fz1) fz1 = z;
     }
   }
-  if (fz1 === -Infinity) return { ok: false, reason: 'под этой точкой нет грани для распорки' };
+  if (fz1 === -Infinity) return { ok: false, reason: 'there is no face under that spot to brace' };
 
   let H = fz1 - SWAY.topClear;
   if (H < SWAY.minRibH) {
-    return { ok: false, reason: `эта грань достигает высоты всего ${fz1.toFixed(0)} мм — распорка не нужна` };
+    return { ok: false, reason: `that face only reaches ${fz1.toFixed(0)}mm up — too short to need a brace` };
   }
   const thFor = (h) => Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h);
   let th = thFor(H);
@@ -287,7 +287,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     if (H < SWAY.minRibH) break;
   }
   if (hit !== Infinity) {
-    return { ok: false, reason: 'деталь выступает над этой точкой, поэтому распорка от стола не может пройти вдоль грани' };
+    return { ok: false, reason: 'the part sticks out over that spot, so a brace standing on the plate can’t reach up the face' };
   }
 
   // The foot has its own, wider footprint on the plate.
@@ -300,7 +300,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     (q) => (sFootOut + 0.1) - q[0],
   ]);
   if (footHit !== Infinity) {
-    return { ok: false, reason: 'основание детали выступает под этой гранью, и на столе нет места для основания распорки' };
+    return { ok: false, reason: 'the part’s base spreads out under this face, so there is no room on the plate for the brace’s foot' };
   }
 
   const out = [];
@@ -339,7 +339,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     // between them, so the grip has to cover a real share of the height too.
     const wanted = Math.max(SWAY.minTines, Math.floor(SWAY.minGripShare * (zEnd - zStart) / S.spacing));
     if (tines < wanted) {
-      return { ok: false, reason: 'распорка прилегает к слишком малой части грани для фиксации перемычками — выберите более плоский участок стороны' };
+      return { ok: false, reason: 'too little of this face lines up with the brace for its tines to grip — try a flatter part of the side' };
     }
     // Everything below the lowest tine is a lone wall holding nothing, and held by
     // nothing. Past this much of it the brace is its own liability, so refuse rather
@@ -351,9 +351,9 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     stilt = Math.max(0, firstGrip - Math.max(SWAY.footH, S.gripFrom));
     const maxStilt = Math.min(SWAY.stiltMax, SWAY.stiltMaxFrac * H);
     if (!S.allowStilt && stilt > maxStilt) {
-      return { ok: false, reason: `эта сторона начинается только на высоте ${firstGrip.toFixed(0)} мм, поэтому распорка `
-        + `пройдёт ${stilt.toFixed(0)} мм без фиксации до первого контакта (максимум ${maxStilt.toFixed(0)} мм) `
-        + '— поверните деталь так, чтобы эта сторона доходила до стола' };
+      return { ok: false, reason: `this side only starts ${firstGrip.toFixed(0)}mm up, so the brace `
+        + `would stand ${stilt.toFixed(0)}mm holding nothing before it grips (max ${maxStilt.toFixed(0)}mm) `
+        + '— rotate so this side reaches the plate' };
     }
   }
 
@@ -516,7 +516,7 @@ export function buildSwayBraces(topo, result, rot, opts = {}) {
   const partTris = printTriangles(topo, rot, result.offset);
   let partTop = 0;
   for (let i = 2; i < partTris.length; i += 3) if (partTris[i] > partTop) partTop = partTris[i];
-  if (partTop < SWAY.minPartH) return none(`высота детали всего ${partTop.toFixed(0)} мм — слишком мала для раскачивания`);
+  if (partTop < SWAY.minPartH) return none(`the part is only ${partTop.toFixed(0)}mm tall, too short to sway`);
 
   const cut = leanCut();
   const cands = findWallPatches(topo, rot, result.offset)
@@ -525,7 +525,7 @@ export function buildSwayBraces(topo, result, rot, opts = {}) {
       && p.z1 >= SWAY.minTopFrac * partTop)
     .map((p) => ({ p, score: (p.z1 - Math.max(0, p.z0)) * (p.u1 - p.u0), bearing: Math.atan2(p.n.y, p.n.x) }))
     .sort((a, b) => b.score - a.score);
-  if (!cands.length) return none('в этой ориентации нет достаточно высокой и плоской вертикальной стороны для распорки');
+  if (!cands.length) return none('no upright side is tall and flat enough to brace in this pose');
 
   const sep = (SWAY.minBearingSep * Math.PI) / 180;
   const angGap = (a, b) => { const d = Math.abs(a - b) % (2 * Math.PI); return Math.min(d, 2 * Math.PI - d); };
@@ -560,7 +560,7 @@ export function buildSwayBraces(topo, result, rot, opts = {}) {
   }
   return {
     triangles: out, count: ribs.length, tines, skipped, ribs,
-    reason: ribs.length ? null : 'в этой ориентации другие части модели перекрывают доступ к вертикальным сторонам',
+    reason: ribs.length ? null : 'the upright sides are blocked by other parts of the model in this pose',
   };
 }
 
@@ -599,7 +599,7 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
   opts = { allowStilt: true, ...opts };
   const { byFace, partTris } = patchesFor(topo, rot, result.offset);
   const p = byFace.get(faceIndex);
-  if (!p) return { ok: false, reason: 'эта грань слишком мала или изогнута для распорки' };
+  if (!p) return { ok: false, reason: 'that face is too small or curved to stand a brace against' };
   const u = point[0] * p.u.x + point[1] * p.u.y;
   const { braces, walls } = avoidance(avoid);
   let last = null, hitBrace = false, hitWall = false;
@@ -612,12 +612,12 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
     last = r;
   }
   if (hitBrace) {
-    return { ok: false, reason: 'распорка пересечётся с другой распоркой (на противоположной стенке или рядом) '
-      + '— выберите точку со смещением относительно неё' };
+    return { ok: false, reason: 'it would run into another brace (on the facing wall, or right beside it) '
+      + '— click a spot staggered from it' };
   }
   if (hitWall) {
-    return { ok: false, reason: 'здесь уже есть поддержка, и они сплавятся в одно целое '
-      + '— выберите свободное место' };
+    return { ok: false, reason: 'a support already stands there, and the two would fuse into one piece '
+      + '— click a spot clear of it' };
   }
   return last;
 }

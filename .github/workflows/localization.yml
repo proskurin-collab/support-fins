@@ -1,0 +1,56 @@
+name: localization
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  localization-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno run -A localization/ru/check-docs.js
+
+  localization-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CHROME: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run UI smoke in Russian
+        run: deno run -A prototype/ui-smoke/ui-smoke.js --model cone --out /tmp/ui-smoke.json
+      - name: Reject untranslated interface text
+        run: deno run -A localization/ru/check-ui.js /tmp/ui-smoke.json
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start container
+        run: docker compose up --build --detach
+      - name: Wait for healthcheck and verify HTTP
+        run: |
+          for attempt in $(seq 1 30); do
+            health=$(docker inspect --format '{{.State.Health.Status}}' support-fins)
+            [ "$health" = healthy ] && break
+            sleep 2
+          done
+          test "$(docker inspect --format '{{.State.Health.Status}}' support-fins)" = healthy
+          curl --fail --silent http://127.0.0.1:8731/ >/dev/null
+      - name: Stop container
+        if: always()
+        run: docker compose down

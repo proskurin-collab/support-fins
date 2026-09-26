@@ -9,6 +9,11 @@
  * shows. A deliberate trade (e.g. fewer walls on purpose) still shows up here and
  * has to be explained in the PR; that's the point. `--changed` writes the keys of
  * every case that differs, for vs-base.sh to export and run check_stl.py on.
+ *
+ * Mesh identity is reported on its own line: `hash` (sweep.js) is left out of the
+ * metric comparison, so a base swept before hashes existed still compares on the
+ * metrics. A case whose metrics match but whose mesh differs counts as changed
+ * (the check_stl pass looks at it) and is listed under info.
  */
 const [baseF, headF] = Deno.args.filter((a) => !a.startsWith('--'));
 const ci = Deno.args.indexOf('--changed');
@@ -29,29 +34,35 @@ const LOWTINE_MM = 0.1;                       // lowest tine rising (base grip)
 const COV_PTS = 2, COV_HELD = 0.5;
 
 const blocking = { error: [], unserved: [], cov: [], wallLen: [], tines: [], lowTine: [], vanished: [] };
-const info = { traded: [], covUp: [], walls: [], squat: [], tinesUp: [], lenUp: [], lowTineDown: [], lowTopDown: [], grams: [] };
+const info = { mesh: [], traded: [], covUp: [], walls: [], squat: [], tinesUp: [], lenUp: [], lowTineDown: [], lowTopDown: [], grams: [] };
 const changed = [];
 let identical = 0;
-const strip = (r) => JSON.stringify({ ...r, ms: 0 });
+let hashed = 0, sameMesh = 0;
+const strip = (r) => JSON.stringify({ ...r, ms: 0, hash: undefined });
 
 for (const k of Object.keys(B)) {
   const b = B[k], h = H[k];
-  if (!h) { blocking.vanished.push([k, 'случай отсутствует в текущей ветке']); continue; }
-  if (strip(b) === strip(h)) { identical++; continue; }
+  if (!h) { blocking.vanished.push([k, 'case missing from head']); continue; }
+  const meshDiffers = b.hash != null && h.hash != null && b.hash !== h.hash;
+  if (b.hash != null && h.hash != null) { hashed++; if (!meshDiffers) sameMesh++; }
+  if (strip(b) === strip(h)) {
+    if (!meshDiffers) { identical++; continue; }
+    info.mesh.push([k, `${b.hash} -> ${h.hash}`]);
+  }
   changed.push(k);
   if (h.error && !b.error) { blocking.error.push([k, h.error]); continue; }
   if (b.error) continue;
   const lost = (x, y, n, f) => x - y > Math.max(n, f * x);
-  if (h.unserved > b.unserved) blocking.unserved.push([k, `${b.unserved} -> ${h.unserved} областей без поддержки`]);
+  if (h.unserved > b.unserved) blocking.unserved.push([k, `${b.unserved} -> ${h.unserved} unserved regions`]);
   const hasCov = b.cov != null && h.cov != null;
   if (hasCov && b.cov - h.cov > COV_PTS) blocking.cov.push([k, `${b.cov} -> ${h.cov} %`]);
   if (hasCov && h.cov - b.cov > COV_PTS) info.covUp.push([k, `${b.cov} -> ${h.cov} %`]);
   const held = hasCov && h.cov >= b.cov - COV_HELD;
-  const proxy = (cat, d) => (held ? info.traded.push([k, `${d}, покрытие ${b.cov} -> ${h.cov} %`]) : blocking[cat].push([k, d]));
-  if (lost(b.wallLen, h.wallLen, LEN_MM, LEN_FRAC)) proxy('wallLen', `стенка ${b.wallLen} -> ${h.wallLen} мм`);
-  if (lost(b.tines, h.tines, TINE_N, TINE_FRAC)) proxy('tines', `перемычки ${b.tines} -> ${h.tines}`);
+  const proxy = (cat, d) => (held ? info.traded.push([k, `${d}, coverage ${b.cov} -> ${h.cov} %`]) : blocking[cat].push([k, d]));
+  if (lost(b.wallLen, h.wallLen, LEN_MM, LEN_FRAC)) proxy('wallLen', `wall ${b.wallLen} -> ${h.wallLen} mm`);
+  if (lost(b.tines, h.tines, TINE_N, TINE_FRAC)) proxy('tines', `tines ${b.tines} -> ${h.tines}`);
   if (b.lowTine != null && (h.lowTine == null || h.lowTine > b.lowTine + LOWTINE_MM)) {
-    blocking.lowTine.push([k, `${b.lowTine} -> ${h.lowTine ?? 'нет'} мм`]);
+    blocking.lowTine.push([k, `${b.lowTine} -> ${h.lowTine ?? 'none'} mm`]);
   }
   if (h.walls !== b.walls) info.walls.push([k, `${b.walls} -> ${h.walls}`]);
   if (h.squat !== b.squat) info.squat.push([k, `${b.squat} -> ${h.squat}`]);
@@ -59,39 +70,41 @@ for (const k of Object.keys(B)) {
   if (h.wallLen > b.wallLen + LEN_MM) info.lenUp.push([k, `${b.wallLen} -> ${h.wallLen}`]);
   if (b.lowTine != null && h.lowTine != null && h.lowTine < b.lowTine - LOWTINE_MM) info.lowTineDown.push([k, `${b.lowTine} -> ${h.lowTine}`]);
   if (b.lowTop != null && h.lowTop != null && h.lowTop < b.lowTop - 0.1) info.lowTopDown.push([k, `${b.lowTop} -> ${h.lowTop}`]);
-  if (Math.abs(h.grams - b.grams) > 0.5) info.grams.push([k, `${b.grams} -> ${h.grams} г`]);
+  if (Math.abs(h.grams - b.grams) > 0.5) info.grams.push([k, `${b.grams} -> ${h.grams} g`]);
 }
 
 const sum = (D, f) => Object.values(D).reduce((s, r) => s + (r[f] || 0), 0);
 const n = Object.keys(B).length;
-console.log(`Случаев: ${n}; совпадают: ${identical}, изменены: ${changed.length}`);
-console.log(`итого  перемычки ${sum(B, 'tines')} -> ${sum(H, 'tines')}   длина стенок ${Math.round(sum(B, 'wallLen'))} -> ${Math.round(sum(H, 'wallLen'))} мм` +
-            `   пластик ${Math.round(sum(B, 'grams'))} -> ${Math.round(sum(H, 'grams'))} г   время ${sum(B, 'ms')} -> ${sum(H, 'ms')} мс`);
+console.log(`${n} cases: ${identical} identical, ${changed.length} changed`);
+console.log(hashed ? `meshes  ${sameMesh}/${hashed} byte-identical to base` : 'meshes  not compared (base run has no mesh hash)');
+console.log(`totals  tines ${sum(B, 'tines')} -> ${sum(H, 'tines')}   wall length ${Math.round(sum(B, 'wallLen'))} -> ${Math.round(sum(H, 'wallLen'))} mm` +
+            `   plastic ${Math.round(sum(B, 'grams'))} -> ${Math.round(sum(H, 'grams'))} g   time ${sum(B, 'ms')} -> ${sum(H, 'ms')} ms`);
 const both = Object.keys(B).filter((k) => B[k].cov != null && H[k]?.cov != null);
-const mean = (D) => (both.length ? (both.reduce((s, k) => s + D[k].cov, 0) / both.length).toFixed(1) : 'н/д');
-console.log(`среднее покрытие нависаний ${mean(B)}% -> ${mean(H)}%  (случаев с нависаниями: ${both.length})`);
+const mean = (D) => (both.length ? (both.reduce((s, k) => s + D[k].cov, 0) / both.length).toFixed(1) : 'n/a');
+console.log(`mean overhang coverage ${mean(B)}% -> ${mean(H)}%  (${both.length} cases with overhangs)`);
 
 const LABEL = {
-  error: 'НОВЫЙ СБОЙ', unserved: 'область нависания осталась БЕЗ ПОДДЕРЖКИ', cov: `ПОТЕРЯ покрытия нависаний (>${COV_PTS} п. п.)`,
-  traded: 'меньше перемычек/стенок, покрытие сохранено (компромисс)', covUp: `покрытие нависаний выросло (>${COV_PTS} п. п.)`,
-  wallLen: 'ПОТЕРЯ длины стенок (покрытие снизилось)',
-  tines: 'ПОТЕРЯ перемычек (покрытие снизилось)', lowTine: 'нижняя перемычка ПОДНЯЛАСЬ (крепление у основания)', vanished: 'случай отсутствует',
-  walls: 'число стенок изменилось', squat: 'низкие стенки изменились', tinesUp: 'перемычек стало больше', lenUp: 'длина стенок выросла',
-  lowTineDown: 'нижняя перемычка опустилась', lowTopDown: 'стенки доходят ниже', grams: 'расход пластика изменился >0.5 г',
+  mesh: 'mesh changed, metrics identical',
+  error: 'NEW CRASH', unserved: 'overhang region went UNSERVED', cov: `overhang coverage LOST (>${COV_PTS} pts)`,
+  traded: 'tines/wall lost, coverage held (trade)', covUp: `overhang coverage gained (>${COV_PTS} pts)`,
+  wallLen: 'wall length LOST (coverage fell)',
+  tines: 'tines LOST (coverage fell)', lowTine: 'lowest tine ROSE (base grip)', vanished: 'case missing',
+  walls: 'wall count changed', squat: 'squat walls changed', tinesUp: 'tines gained', lenUp: 'wall length gained',
+  lowTineDown: 'lowest tine lowered', lowTopDown: 'walls reach lower', grams: 'plastic changed >0.5g',
 };
 let blocked = 0;
-console.log('\nБЛОКИРУЮЩИЕ (ветка поддерживает меньше базовой версии):');
+console.log('\nBLOCKING (the branch supports less than the base):');
 for (const [cat, rows] of Object.entries(blocking)) {
   blocked += rows.length;
   console.log(`  ${rows.length ? '✗' : '✓'} ${LABEL[cat]}: ${rows.length}`);
   for (const [k, d] of rows) console.log(`      ${k.padEnd(40)} ${d}`);
 }
-console.log('\nсведения:');
+console.log('\ninfo:');
 for (const [cat, rows] of Object.entries(info)) {
   console.log(`    ${LABEL[cat]}: ${rows.length}`);
-  if (cat === 'traded' && Deno.args.includes('--trades')) for (const [k, d] of rows) console.log(`      ${k.padEnd(40)} ${d}`);
+  if (cat === 'mesh' || (cat === 'traded' && Deno.args.includes('--trades'))) for (const [k, d] of rows) console.log(`      ${k.padEnd(40)} ${d}`);
 }
 
 if (changedOut) Deno.writeTextFileSync(changedOut, JSON.stringify(changed));
-console.log(blocked ? `\nБлокирующих регрессий: ${blocked}.` : '\nБлокирующих регрессий нет.');
+console.log(blocked ? `\n${blocked} blocking regression(s).` : '\nNo blocking regressions.');
 Deno.exit(blocked ? 1 : 0);

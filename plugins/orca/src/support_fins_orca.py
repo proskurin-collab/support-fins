@@ -4,7 +4,7 @@
 #
 # [tool.orcaslicer.plugin]
 # name = "Support Fins"
-# description = "Добавляет отламываемые рёбра поддержки printfins.com под нависаниями при нарезке. Детали с включёнными поддержками Orca не изменяются."
+# description = "Adds printfins.com breakaway support fins under overhangs at slice time. Parts with Orca supports turned on are left alone."
 # author = "Matthew Trahan (engine), J (Orca plugin)"
 # version = "0.1.0"
 # type = "slicing-pipeline"
@@ -87,7 +87,7 @@ def _engine_ctx():
         import sys
         from py_mini_racer import MiniRacer, init_mini_racer
         if ENGINE_JS.startswith("__FINS_ENGINE"):
-            raise RuntimeError("нет сборки движка рёбер -- запустите plugins/orca/build.py")
+            raise RuntimeError("fin engine bundle missing -- run plugins/orca/build.py")
         flags = ["--single-threaded"]
         if sys.platform == "darwin":
             flags.append("--jitless")
@@ -306,7 +306,7 @@ class SliceFrame:
         (bx0, by0, bx1, by1) = slice_bbox
         w_mm = part_xy_max - part_xy_min
         if w_mm[0] <= 0 or w_mm[1] <= 0:
-            raise ValueError("вырожденная проекция детали на стол")
+            raise ValueError("degenerate part footprint")
         self.sx = (bx1 - bx0) / w_mm[0]
         self.sy = (by1 - by0) / w_mm[1]
         self.tx = bx0 - part_xy_min[0] * self.sx
@@ -316,7 +316,7 @@ class SliceFrame:
         # bbox isn't the footprint we think it is -- refuse rather than misplace fins.
         for s in (self.sx, self.sy):
             if not (0.9 * nominal < s < 1.1 * nominal):
-                raise ValueError(f"ошибка калибровки системы координат срезов: масштаб {s:.1f}, номинальный {nominal:.1f}")
+                raise ValueError(f"slice frame calibration off: scale {s:.1f} vs nominal {nominal:.1f}")
 
     def to_scaled(self, loop):
         out = np.empty((len(loop), 2), dtype=np.int64)
@@ -451,12 +451,12 @@ def inject_fins(print_object, cfg, layer_height, unit, log=None):
     log = {} if log is None else log
     soup = posed_part_soup(print_object)
     if len(soup) == 0:
-        return "нет объёмов деталей модели"
+        return "no model-part volumes"
     zmin = soup[:, :, 2].min()
     soup = soup - np.array([0.0, 0.0, zmin])       # object bottom at z = 0, like slice_z
     fins, stats = compute_fins(soup, layer_height, cfg)
     if len(fins) == 0:
-        return "рёбра не требуются"
+        return "no fins needed"
     pts = soup.reshape(-1, 3)
     bbox = print_object.bounding_box()
     frame = SliceFrame(pts[:, :2].min(axis=0), pts[:, :2].max(axis=0), bbox, unit)
@@ -490,8 +490,8 @@ def inject_fins(print_object, cfg, layer_height, unit, log=None):
         if expolys and add_fins_to_layer(layer, expolys):
             touched += 1
             log["layers"].append([round(z, 4), round(sum(e.area() for e in expolys) * unit * unit, 4)])
-    return (f"рёбер: {stats.get('braces', 0)}, перемычек: {stats.get('tines', 0)}, "
-            f"слоёв: {touched}")
+    return (f"{stats.get('braces', 0)} fin(s), {stats.get('tines', 0)} tine(s) "
+            f"on {touched} layer(s)")
 
 
 class SupportFinsSlicing(orca.slicing.SlicingPipelineCapabilityBase):
@@ -506,13 +506,13 @@ class SupportFinsSlicing(orca.slicing.SlicingPipelineCapabilityBase):
             return orca.ExecutionResult.success()
         cfg = _cfg(self)
         if not cfg["enabled"]:
-            return orca.ExecutionResult.success("Support Fins: отключён в настройках плагина")
+            return orca.ExecutionResult.success("Support Fins: disabled in plugin config")
         if np is None:
             return orca.ExecutionResult.failure(orca.PluginResult.RecoverableError,
-                                                "Support Fins требуется numpy (ошибка установки?)")
+                                                "Support Fins needs numpy (install failed?)")
         po = ctx.object
         if cfg["apply_to"] != "all" and _truthy(po.config_value("enable_support")):
-            return orca.ExecutionResult.success("Support Fins: пропущено (для этой детали включены поддержки Orca)")
+            return orca.ExecutionResult.success("Support Fins: skipped (Orca supports are on for this part)")
         try:
             lh = float(po.config_value("layer_height") or ctx.config_value("layer_height") or 0.2)
         except (TypeError, ValueError):
