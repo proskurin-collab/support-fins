@@ -31,7 +31,10 @@ jobs:
         with:
           deno-version: v2.x
       - name: Run UI smoke in Russian
-        run: deno run -A prototype/ui-smoke/ui-smoke.js --model cone --out /tmp/ui-smoke.json
+        run: |
+          sed "s/'--use-angle=metal'/'--use-angle=swiftshader', '--enable-unsafe-swiftshader'/" \
+            prototype/ui-smoke/ui-smoke.js > prototype/ui-smoke/ui-smoke-ci.js
+          deno run -A prototype/ui-smoke/ui-smoke-ci.js --model cone --out /tmp/ui-smoke.json
       - name: Reject untranslated interface text
         run: deno run -A localization/ru/check-ui.js /tmp/ui-smoke.json
 
