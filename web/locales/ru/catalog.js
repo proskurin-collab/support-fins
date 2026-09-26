@@ -40,11 +40,36 @@ const EXACT = new Map([
     '— она подсвечивается зелёным, если здесь можно разместить ребро поддержки.'],
   ['Remove selected', 'Удалить выбранное'], ['Clear all', 'Удалить все'],
   ['not needed', 'не нужна'], ['added', 'добавлена'],
+  ['Sure hold (small foot)', 'Надёжная фиксация (малая опора)'],
   ['Auto (Light)', 'Автоматически (Лёгкая)'],
   ['Auto (Sure hold)', 'Автоматически (Надёжная фиксация)'],
   ['none yet', 'пока нет'], ['none possible', 'невозможно разместить'],
+  ['none', 'нет'], ['fits', 'помещается'],
   ['Best', 'Лучшая'], ['No support', 'Без поддержек'], ['Bores clean', 'Чистые отверстия'],
   ['off', 'выкл.'], ['solid', 'сплошные'],
+  ['Click a fin — Esc done', 'Нажмите на ребро — Esc завершает режим'],
+  ['The tines grab onto the part and bend away when you snap the supports off.',
+    'Соединительные перемычки держатся за деталь и отгибаются при отламывании поддержек.'],
+  ['The tines grab onto the part and bend away when you snap the wall off.',
+    'Соединительные перемычки держатся за деталь и отгибаются при отламывании стенки.'],
+  ['The fins stand a hair off the part (0.2mm) so they pop off. Turn Tines on if you want them to grip.',
+    'Рёбра стоят с небольшим зазором от детали (0.2 мм), чтобы легко отламываться. Включите перемычки для крепления к детали.'],
+  ['These are plain props, not gripping fins. The overhangs here are too shallow or curved to stand a fin against, so there are no tines to add.',
+    'Это простые подпорки без крепления к детали. Нависания здесь слишком пологие или изогнутые для ребра, поэтому соединительные перемычки добавить нельзя.'],
+  ['The sway braces stand edge-on against the tall sides and are tied on by tines all the way up, so the top can’t drift or wobble as it prints.',
+    'Стабилизирующие распорки стоят торцом к высоким сторонам и крепятся перемычками по всей высоте, чтобы верх детали не смещался при печати.'],
+  ['The load pulls straight across the layers — where prints split first.',
+    'Нагрузка направлена поперёк слоёв — в направлении, где печатная деталь раскалывается первой.'],
+  ['The load runs along the layers — the strong direction. Good.',
+    'Нагрузка направлена вдоль слоёв — это прочное направление.'],
+  ['This is about the strongest printable orientation for this load — a better-aligned pose wouldn’t sit on the bed.',
+    'Это почти самая прочная пригодная для печати ориентация при такой нагрузке — более выгодное положение не удержится на столе.'],
+  ['no flat upright face on this part in this orientation',
+    'в этой ориентации у детали нет плоской вертикальной грани'],
+  ['Click two points across an overhang (a line lands right where you draw it, red faces included) to lay a breakaway wall under it.',
+    'Укажите две точки поперёк нависания, чтобы поставить под ним отламываемую стенку; линия пройдёт точно по нарисованному месту, включая красные грани.'],
+  ['couldn’t place that brace: too little of this face lines up with the brace for its tines to grip — try a flatter part of the side.',
+    'не удалось поставить распорку: с ней совмещается слишком малая часть грани для крепления перемычек — попробуйте более плоский участок стороны.'],
   ['of support material added', 'на поддержки'],
   ['Print it support-free, in any slicer', 'Печатайте без поддержек слайсера'],
   ['Rotate a part however it prints best, and Support Fins bakes the breakaway supports right into the STL. It prints the same on any machine, in any slicer, with supports turned off.',
@@ -154,6 +179,10 @@ const TEMPLATES = [
   { pattern: /^(\d+) fps$/, replace: ([, n]) => `${n} кадр/с` },
   { pattern: /^(\d+) region(?:s)?(?: \(\+(\d+) sliver(?:s)?\))?$/, replace: ([, n, small]) => `Участков: ${n}${small ? ` (мелких: +${small})` : ''}` },
   { pattern: /^imported “(.+)” of (\d+) objects$/, replace: ([, name, total]) => `Импортирован объект «${name}»; всего объектов: ${total}` },
+  { pattern: /^STEP: merged (\d+) of (\d+) objects into one part; tessellated at (\d+(?:\.\d+)?) mm\.$/, replace: ([, count, total, tolerance]) =>
+    `STEP: объединено объектов: ${count} из ${total}; точность тесселяции ${tolerance} мм.` },
+  { pattern: /^3MF: imported “(.+)” of (\d+) objects\.$/, replace: ([, name, total]) =>
+    `3MF: импортирован объект «${name}»; всего объектов: ${total}.` },
   { pattern: /^(\d+) drawn walls?(?: · (\d+) tines)?$/, replace: ([, walls, tines]) =>
     `Стенок вручную: ${walls}${tines ? ` · соединительных перемычек: ${tines}` : ''}` },
   { pattern: /^(?=\d+ (?:support fins?|props?|drawn|sway braces?))(.*)$/, replace: ([, value]) => value
@@ -166,8 +195,16 @@ const TEMPLATES = [
     .replace(/\((\d+) removed\)/g, '(удалено: $1)') },
   { pattern: /^(light|medium|firm) grip · (\d+(?:\.\d+)?) mm$/, replace: ([, grip, mm]) =>
     `${({ light: 'слабая', medium: 'средняя', firm: 'сильная' })[grip]} фиксация · ${mm} мм` },
-  { pattern: /^(\d+(?:\.\d+)?) mm gap · pad (.+)$/, replace: ([, mm, pad]) =>
-    `${mm} мм зазор · площадка ${pad}` },
+  { pattern: /^(\d+(?:\.\d+)?) mm gap · pad (.+)$/, replace: ([, mm, pad]) => {
+    const names = { auto: 'автоматически', 'auto (light)': 'автоматически (лёгкая)',
+      'auto (sure hold)': 'автоматически (надёжная фиксация)' };
+    return `${mm} мм зазор · площадка ${names[pad] ?? pad}`;
+  } },
+  { pattern: /^(\d+(?:\.\d+)?) мм зазор · площадка (.+)$/, replace: ([, mm, pad]) => {
+    const names = { auto: 'автоматически', 'auto (light)': 'автоматически (лёгкая)',
+      'auto (sure hold)': 'автоматически (надёжная фиксация)' };
+    return names[pad] ? `${mm} мм зазор · площадка ${names[pad]}` : `${mm} мм зазор · площадка ${pad}`;
+  } },
   { pattern: /^(.+) cutouts$/, replace: ([, style]) => `${style} · вырезы` },
   { pattern: /^(\d+(?:\.\d+)?) mm tines · (\d+(?:\.\d+)?)% deep(?: · from (\d+(?:\.\d+)?) mm)?$/, replace: ([, spacing, depth, from]) =>
     `${spacing} мм между перемычками · глубина ${depth}%${from ? ` · от ${from} мм` : ''}` },
@@ -175,6 +212,27 @@ const TEMPLATES = [
     `${mm} мм · без рёбер${rough ? ` · шероховатых участков: ${rough}` : ''}` },
   { pattern: /^(\d+(?:\.\d+)?) mm · (\d+) fins?(?: · (\d+) rough)?$/, replace: ([, mm, fins, rough]) =>
     `${mm} мм · рёбер: ${fins}${rough ? ` · шероховатых участков: ${rough}` : ''}` },
+];
+
+const DYNAMIC_PHRASES = [
+  { pattern: /This way up it needs no fins, 0 g\./g, replace: 'В этой ориентации рёбра не нужны, 0 г.' },
+  { pattern: /It prints tall, though, the weaker direction, so check the Strength arrow if it bears a load\./g,
+    replace: 'Но деталь печатается в высоту, в менее прочном направлении: если она будет под нагрузкой, проверьте стрелку нагрузки.' },
+  { pattern: /plus (\d+) walls? you added by hand\./g, replace: 'Также добавлено стенок вручную: $1.' },
+  { pattern: /(\d+) overhangs? (?:is|are) too shallow for a fin this way up\. Tilt the part steeper so a fin can follow it \(try Suggest orientation\), or add a wall by hand\./g,
+    replace: 'Нависаний, слишком пологих для ребра в этой ориентации: $1. Увеличьте наклон детали, попробуйте «Подобрать ориентацию» или добавьте стенку вручную.' },
+  { pattern: /(\d+) overhangs? (?:sits|sit) inside a bore or slot, where a support would leave a mark you can’t reach\. The tool leaves (?:it|them) alone, so turn the hole upward to print (?:it|them) clean\./g,
+    replace: 'Нависаний внутри отверстия или паза: $1. Поддержка оставила бы там недоступный след, поэтому поверните отверстие вверх для чистой печати.' },
+  { pattern: /this part meets the plate on a small foot \((under 1|\d+) mm of first-layer edge\), too little for a Light pad to grip, so Auto made it Sure hold, touching the part to hold it\./g,
+    replace: (_, edge) => `У детали малая площадь опоры на стол (${edge === 'under 1' ? 'менее 1' : edge} мм края первого слоя): для лёгкой площадки этого недостаточно, поэтому автоматический режим выбрал надёжную фиксацию с контактом с деталью.` },
+  { pattern: /this part meets the plate on a small foot \((under 1|\d+) mm of first-layer edge\); a pad with a gap has almost nothing to grip\. Sure hold, or Pad gap 0, holds it\./g,
+    replace: (_, edge) => `У детали малая площадь опоры на стол (${edge === 'under 1' ? 'менее 1' : edge} мм края первого слоя); площадке с зазором почти не за что зацепиться. Выберите надёжную фиксацию или зазор площадки 0.` },
+  { pattern: /this part balances on one point, so the bed pad is holding it\. Print with the pad on\./g,
+    replace: 'Деталь опирается на одну точку, поэтому её держит опорная площадка. Печатайте с включённой площадкой.' },
+  { pattern: /selected: wall (\d+)mm long, (\d+) tines\. Press Delete or Remove selected to take it out \(Esc to keep it\)\./g,
+    replace: 'Выбрана стенка длиной $1 мм, перемычек: $2. Нажмите Delete или «Удалить выбранное» для удаления (Esc — оставить).' },
+  { pattern: /(?:вручную: )?(\d+) walls? couldn’t attach here \(this overhang sits above another part of the model, so a wall standing on the plate can’t reach it — rotate so it faces the plate\)\./g,
+    replace: 'Не удалось прикрепить стенок вручную: $1 (на пути от стола к нависанию находится другая часть модели — поверните нависание к столу).' },
 ];
 
 const ALLOWED_ENGLISH = [
@@ -203,13 +261,19 @@ export function translateText(value) {
     const match = core.match(template.pattern);
     if (match) return `${before}${template.replace(match)}${after}`;
   }
+  let dynamic = core;
+  for (const phrase of DYNAMIC_PHRASES) dynamic = dynamic.replace(phrase.pattern, phrase.replace);
+  for (const [source, target] of EXACT) {
+    if (source.length >= 12 && dynamic.includes(source)) dynamic = dynamic.replaceAll(source, target);
+  }
+  if (dynamic !== core) return `${before}${dynamic}${after}`;
   return String(value);
 }
 
 export function hasTranslation(value) { return translateText(value) !== String(value); }
 
 export function isAllowedEnglish(value) {
-  let remainder = String(value);
+  let remainder = String(value).replace(/“[^”]+”|«[^»]+»/g, '');
   for (const allowed of ALLOWED_ENGLISH) remainder = remainder.replace(allowed, '');
   return !/[A-Za-z]{2,}/.test(remainder);
 }

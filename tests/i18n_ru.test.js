@@ -30,6 +30,12 @@ Deno.test('ru catalog translates parameterized messages without changing their v
   assertEquals(translateText('0.2 mm gap · pad Автоматически (Лёгкая)'),
     '0.2 мм зазор · площадка Автоматически (Лёгкая)');
   assertEquals(translateText('20 mm · no fins'), '20 мм · без рёбер');
+  assertEquals(translateText('0.2 mm gap · pad auto (sure hold)'),
+    '0.2 мм зазор · площадка автоматически (надёжная фиксация)');
+  assertEquals(
+    translateText('This way up it needs no fins, 0 g. It prints tall, though, the weaker direction, so check the Strength arrow if it bears a load.'),
+    'В этой ориентации рёбра не нужны, 0 г. Но деталь печатается в высоту, в менее прочном направлении: если она будет под нагрузкой, проверьте стрелку нагрузки.',
+  );
 });
 
 Deno.test('ru catalog leaves unknown text unchanged so upstream UI remains usable', () => {
@@ -38,6 +44,7 @@ Deno.test('ru catalog leaves unknown text unchanged so upstream UI remains usabl
 
 Deno.test('ru allowlist accepts product terms but not untranslated prose', () => {
   assertEquals(isAllowedEnglish('Support Fins · STL · 3MF · STEP · PLA · PETG · 0.2 mm'), true);
+  assertEquals(isAllowedEnglish('3MF: импортирован объект «Object 1»; всего объектов: 2.'), true);
   assertEquals(isAllowedEnglish('A brand new upstream message'), false);
 });
 
