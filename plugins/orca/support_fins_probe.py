@@ -3,8 +3,8 @@
 # dependencies = ["numpy"]   # Orca does not bundle numpy; its uv installs it from here
 #
 # [tool.orcaslicer.plugin]
-# name = "Support Fins — Probe"
-# description = "Reads the loaded model and reports its overhangs at 45 deg. A spike that proves the printfins.com auto-fit can run inside OrcaSlicer's plugin sandbox."
+# name = "Support Fins — Проверка"
+# description = "Читает загруженную модель и сообщает о нависаниях при 45 град. Прототип проверяет работу автоматического подбора printfins.com в песочнице плагинов OrcaSlicer."
 # author = "Matthew Trahan"
 # version = "0.1.0"
 # ///
@@ -70,9 +70,9 @@ def _probe_trimesh():
     """Report whether the fuller fin steps can lean on trimesh in this interpreter."""
     try:
         import trimesh  # noqa: F401
-        return f"trimesh {getattr(trimesh, '__version__', '?')} available"
+        return f"trimesh {getattr(trimesh, '__version__', '?')} доступен"
     except Exception as e:  # ImportError, or a broken partial install
-        return f"trimesh NOT available ({type(e).__name__}) -- port must reimplement its calls"
+        return f"trimesh НЕДОСТУПЕН ({type(e).__name__}) -- при переносе нужно реализовать его вызовы"
 
 
 def _analyse_mesh(V, T):
@@ -124,11 +124,11 @@ def _analyse_mesh(V, T):
 
 class SupportFinsProbe(orca.script.ScriptPluginCapabilityBase):
     def get_name(self):
-        return "Support Fins — Probe overhangs"
+        return "Support Fins — Проверка нависаний"
 
     def execute(self):
         lines = []
-        lines.append("Support Fins probe — reading loaded model via orca.host")
+        lines.append("Проверка Support Fins — чтение загруженной модели через orca.host")
         lines.append(_probe_trimesh())
         lines.append("")
 
@@ -138,43 +138,43 @@ class SupportFinsProbe(orca.script.ScriptPluginCapabilityBase):
             # failure() takes an orca.PluginResult, not a string -- a string raises TypeError
             return orca.ExecutionResult.failure(
                 orca.PluginResult.RecoverableError,
-                f"orca.host.model() raised {type(e).__name__}: {e}")
+                f"orca.host.model() вызвал ошибку {type(e).__name__}: {e}")
 
         objs = list(model.objects())
         if not objs:
             return orca.ExecutionResult.skipped(
-                "No objects on the plate. Load a model, then run the probe.")
+                "На столе нет объектов. Загрузите модель и запустите проверку.")
 
         any_overhang = False
         for oi, obj in enumerate(objs):
             vols = list(obj.volumes())
-            lines.append(f"Object {oi}: {len(vols)} volume(s)")
+            lines.append(f"Объект {oi}: объёмов — {len(vols)}")
             for vi, vol in enumerate(vols):
                 try:
                     mesh = vol.mesh()
                     V = np.asarray(mesh.vertices())
                     T = np.asarray(mesh.triangles())
                 except Exception as e:
-                    lines.append(f"  vol {vi}: mesh read FAILED "
+                    lines.append(f"  объём {vi}: ОШИБКА чтения сетки "
                                  f"({type(e).__name__}: {e})")
                     continue
                 r = _analyse_mesh(V, T)
                 if r is None:
-                    lines.append(f"  vol {vi}: empty mesh")
+                    lines.append(f"  объём {vi}: пустая сетка")
                     continue
                 any_overhang = any_overhang or r["significant"]
-                flag = "NEEDS FINS" if r["significant"] else "clean (as-oriented)"
+                flag = "НУЖНЫ РЁБРА" if r["significant"] else "без нависаний (в текущей ориентации)"
                 lines.append(
-                    f"  vol {vi}: {r['faces']:,} faces, bbox {r['bbox']} mm -> "
-                    f"{r['overhang_faces']:,} overhang faces, "
-                    f"{r['overhang_area']} mm^2 ({r['overhang_pct']}%) -> {flag}")
+                    f"  объём {vi}: {r['faces']:,} граней, габариты {r['bbox']} мм -> "
+                    f"{r['overhang_faces']:,} нависающих граней, "
+                    f"{r['overhang_area']} мм^2 ({r['overhang_pct']}%) -> {flag}")
 
         lines.append("")
-        lines.append("Read + overhang math ran inside Orca — the printfins.com "
-                     "analysis half is portable." if True else "")
-        lines.append("NOTE: placing fins on the plate is NOT possible via the Orca "
-                     "plugin API (host is read-only). Next phase writes a finned "
-                     ".3mf for File > Import.")
+        lines.append("Чтение и расчёт нависаний выполнены в Orca — аналитическая часть printfins.com "
+                     "поддаётся переносу." if True else "")
+        lines.append("ПРИМЕЧАНИЕ: размещение рёбер на столе НЕВОЗМОЖНО через API плагинов Orca "
+                     "(host доступен только для чтения). Следующий этап сохранит модель с рёбрами в "
+                     ".3mf для команды Файл > Импорт.")
 
         msg = "\n".join(lines)
         # Surface the report in the result dialog AND stdout (Orca log) so it's

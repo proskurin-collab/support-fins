@@ -73,27 +73,27 @@ export enum SupportMaterial
     PLA,
     annotation { "Name" : "PETG" }
     PETG,
-    annotation { "Name" : "Custom" }
+    annotation { "Name" : "Свой профиль" }
     CUSTOM
 }
 
 export enum StabilizeMode
 {
-    annotation { "Name" : "Off" }
+    annotation { "Name" : "Выкл." }
     OFF,
-    annotation { "Name" : "Auto" }
+    annotation { "Name" : "Авто" }
     AUTO,
-    annotation { "Name" : "Selected faces" }
+    annotation { "Name" : "Выбранные грани" }
     SELECTED
 }
 
 export enum PadMode
 {
-    annotation { "Name" : "Auto (small bed contact)" }
+    annotation { "Name" : "Авто (малая площадь контакта со столом)" }
     AUTO,
-    annotation { "Name" : "Always" }
+    annotation { "Name" : "Всегда" }
     ALWAYS,
-    annotation { "Name" : "Never" }
+    annotation { "Name" : "Никогда" }
     NEVER
 }
 
@@ -236,156 +236,156 @@ const PAD_FLOOR         = 0.05 * millimeter;      // a gapped pad still kisses t
 annotation {
     "Feature Type Name" : "Support-Fins FS",
     "Icon" : icon::BLOB_DATA,
-    "Feature Type Description" : "Adds breakaway supports that are part of the model, so the part prints in a strong tilted orientation with slicer supports OFF. 1. Orient the part the way you will print it. The Top plane is the build plate unless you pick another. 2. Select the part. Overhangs are found and get ribs automatically. 3. Set Layer height to your slicer's layer height. 4. Export the part AND its orange supports together as one STL. Slice with supports off. 5. After printing, bend each support sideways to snap it off.",
-    "Tooltip" : "Designed-in breakaway supports with gripping tines, for printing a part tilted"
+    "Feature Type Description" : "Добавляет встроенные в модель отламываемые поддержки для печати в прочной наклонной ориентации с ВЫКЛЮЧЕННЫМИ поддержками слайсера. 1. Ориентируйте деталь для печати. Плоскость Top служит столом, если не выбрать другую. 2. Выберите деталь: нависания находятся и получают рёбра автоматически. 3. Задайте Высоту слоя из слайсера. 4. Экспортируйте деталь И её оранжевые поддержки в один STL. Нарезайте с выключенными поддержками. 5. После печати отогните каждую поддержку вбок, чтобы отломить её.",
+    "Tooltip" : "Встроенные отламываемые поддержки с соединительными перемычками для печати детали под наклоном"
 }
 export const supportFins = defineFeature(function(context is Context, id is Id, definition is map)
     precondition
     {
-        annotation { "Name" : "Parts to support", "Filter" : EntityType.BODY && BodyType.SOLID,
-                     "Description" : "The part(s) to add supports to, already positioned the way they will print. Each part gets its own supports. The parts themselves are never modified." }
+        annotation { "Name" : "Детали для поддержки", "Filter" : EntityType.BODY && BodyType.SOLID,
+                     "Description" : "Детали, которым нужна поддержка, уже в положении для печати. Для каждой детали создаются свои поддержки. Сами детали не изменяются." }
         definition.parts is Query;
 
-        annotation { "Name" : "Build plate (default: Top plane)",
+        annotation { "Name" : "Печатный стол (по умолчанию: плоскость Top)",
                      "Filter" : (EntityType.FACE && GeometryType.PLANE) || BodyType.MATE_CONNECTOR,
                      "MaxNumberOfPicks" : 1,
-                     "Description" : "A plane, flat face or mate connector whose direction is the printer bed. Leave empty to use the Top plane. Up is taken to be the side the part is on." }
+                     "Description" : "Плоскость, плоская грань или соединитель сопряжения, задающий направление печатного стола. Оставьте пустым для плоскости Top. Верх направлен к детали." }
         definition.bedPlane is Query;
 
-        annotation { "Name" : "Flip build direction", "UIHint" : UIHint.OPPOSITE_DIRECTION,
-                     "Description" : "Reverse which way is up, if the supports come out on the wrong side." }
+        annotation { "Name" : "Обратить направление печати", "UIHint" : UIHint.OPPOSITE_DIRECTION,
+                     "Description" : "Обратите направление вверх, если поддержки появляются с другой стороны." }
         definition.flipUp is boolean;
 
-        annotation { "Name" : "Seat part on plate", "Default" : true,
-                     "Description" : "Treat the part's lowest point as the bed surface, so only the plate's direction matters, not its position. Turn off to use the plate exactly where it is." }
+        annotation { "Name" : "Установить деталь на стол", "Default" : true,
+                     "Description" : "Считать нижнюю точку детали поверхностью стола: учитывается только направление стола, а не его положение. Выключите, чтобы использовать фактическое положение стола." }
         definition.seatOnBed is boolean;
 
         // ── Overhang props ───────────────────────────────────────────────────
-        annotation { "Group Name" : "Overhang ribs", "Collapsed By Default" : false }
+        annotation { "Group Name" : "Рёбра под нависаниями", "Collapsed By Default" : false }
         {
-            annotation { "Name" : "Auto-detect overhangs", "Default" : true,
-                         "Description" : "Find downward faces too flat to print unsupported, and put a rib under each. A rib is a thin upside-down-T wall that stops a small gap below the part." }
+            annotation { "Name" : "Автоматически находить нависания", "Default" : true,
+                         "Description" : "Находить направленные вниз грани, слишком пологие для печати без поддержки, и ставить ребро под каждой. Ребро — тонкая стенка в форме перевёрнутой T с небольшим зазором под деталью." }
             definition.autoDetect is boolean;
 
             if (definition.autoDetect)
             {
-                annotation { "Name" : "Overhang angle (from plate)",
-                             "Description" : "Downward faces flatter than this, measured from the bed, get ribs. 45 deg is the usual limit for printing without support; raise it for more supports." }
+                annotation { "Name" : "Угол нависания (от стола)",
+                             "Description" : "Рёбра добавляются под направленными вниз гранями с меньшим углом к столу. 45 град. — обычный предел печати без поддержек; увеличьте угол для большего числа поддержек." }
                 isAngle(definition.overhangAngle, OVERHANG_ANGLE_BOUNDS);
 
-                annotation { "Name" : "Exclude faces",
+                annotation { "Name" : "Исключить грани",
                              "Filter" : EntityType.FACE && ConstructionObject.NO && SketchObject.NO,
-                             "Description" : "Detected overhang faces that should NOT get ribs, e.g. a cosmetic surface or one that bridges fine." }
+                             "Description" : "Найденные нависающие грани, которым не нужны рёбра: например, видимая поверхность или участок, хорошо печатающийся мостом." }
                 definition.excludeFaces is Query;
             }
 
-            annotation { "Name" : "Add overhang faces",
+            annotation { "Name" : "Добавить нависающие грани",
                          "Filter" : EntityType.FACE && ConstructionObject.NO && SketchObject.NO,
-                         "Description" : "Faces to support even if detection skipped them. Any face that points at all downward can be added." }
+                         "Description" : "Грани, которым нужна поддержка, даже если они не найдены автоматически. Можно добавить любую грань, хотя бы частично направленную вниз." }
             definition.extraFaces is Query;
 
-            annotation { "Name" : "Max unsupported span",
-                         "Description" : "The widest stretch of overhang left between two ribs. Wide overhangs get a row of ribs spaced no farther apart than this. Smaller = more ribs." }
+            annotation { "Name" : "Макс. пролёт без поддержки",
+                         "Description" : "Максимальная ширина нависания между двумя рёбрами. Под широкими нависаниями создаётся ряд рёбер с шагом не больше этого значения. Меньше — больше рёбер." }
             isLength(definition.maxSpan, SPAN_BOUNDS);
 
-            annotation { "Name" : "Gripping tines", "Default" : true,
-                         "Description" : "Tiny one-layer bridges from the rib top into the part. They stop a tilted part from sliding or peeling off the rib, and snap cleanly when you bend the rib off. Off = plain breakaway ribs." }
+            annotation { "Name" : "Соединительные перемычки", "Default" : true,
+                         "Description" : "Маленькие мостики высотой в один слой от верха ребра к детали. Не дают наклонённой детали соскользнуть или оторваться и аккуратно ломаются при отгибании ребра. Выкл. — обычные отламываемые рёбра." }
             definition.propTines is boolean;
 
             if (definition.propTines)
             {
-                annotation { "Name" : "Tine spacing",
-                             "Description" : "Distance between tines near the ends of each rib (the middle is spaced twice as far). Smaller = stronger grip but more marks on the part." }
+                annotation { "Name" : "Шаг соединительных перемычек",
+                             "Description" : "Расстояние между перемычками у концов каждого ребра (в середине вдвое больше). Меньше — прочнее удержание, но больше следов на детали." }
                 isLength(definition.tineStep, TINE_STEP_BOUNDS);
             }
 
-            annotation { "Name" : "Max walls per part",
-                         "Description" : "Safety cap on how many ribs one part can get." }
+            annotation { "Name" : "Макс. стенок на деталь",
+                         "Description" : "Предельное число рёбер для одной детали." }
             isInteger(definition.maxWalls, WALL_COUNT_BOUNDS);
         }
 
         // ── Stabilize fins ───────────────────────────────────────────────────
-        annotation { "Group Name" : "Side bracing fins", "Collapsed By Default" : true }
+        annotation { "Group Name" : "Боковые рёбра поддержки", "Collapsed By Default" : true }
         {
-            annotation { "Name" : "Side fins", "Default" : StabilizeMode.OFF,
-                         "Description" : "For a part tipped onto an edge or corner that could fall over during printing. A side fin is a thin wall standing next to a flat side of the part, a small gap away, with rows of tines reaching across to grip it, like a hand holding it upright. Auto picks the best sides facing different directions; Selected faces lets you choose." }
+            annotation { "Name" : "Боковые рёбра", "Default" : StabilizeMode.OFF,
+                         "Description" : "Для детали на ребре или углу, которая может упасть во время печати. Боковое ребро — тонкая стенка рядом с плоской стороной детали, с небольшим зазором и рядами перемычек, удерживающих деталь. Авто выбирает лучшие стороны, направленные в разные стороны; Выбранные грани позволяет выбрать их вручную." }
             definition.stabilizeMode is StabilizeMode;
 
             if (definition.stabilizeMode == StabilizeMode.AUTO)
             {
-                annotation { "Name" : "Max fin sites",
-                             "Description" : "How many sides of the part may get a fin. 2 braces opposite sides, which is usually enough." }
+                annotation { "Name" : "Макс. мест установки рёбер",
+                             "Description" : "Сколько сторон детали могут получить ребро. 2 поддерживает противоположные стороны; обычно этого достаточно." }
                 isInteger(definition.maxFins, FIN_COUNT_BOUNDS);
             }
 
             if (definition.stabilizeMode == StabilizeMode.SELECTED)
             {
-                annotation { "Name" : "Faces to brace",
+                annotation { "Name" : "Грани для укрепления",
                              "Filter" : EntityType.FACE && GeometryType.PLANE && ConstructionObject.NO && SketchObject.NO,
-                             "Description" : "Flat sides to put a fin against. A face works if it leans no more than the Max face lean from vertical, reaches down near the bed, and has open space beside it. Pick faces on opposite sides so the part can't tip either way." }
+                             "Description" : "Плоские стороны для установки рёбер. Подходит грань с наклоном от вертикали не больше предельного, доходящая почти до стола, со свободным пространством рядом. Выбирайте противоположные стороны, чтобы деталь не опрокинулась." }
                 definition.stabilizeFaces is Query;
             }
 
             if (definition.stabilizeMode != StabilizeMode.OFF)
             {
-                annotation { "Name" : "Max face lean (from vertical)",
-                             "Description" : "Steepest face lean, measured from vertical, that can take a side fin. The fin leans with its face, so past 45 deg the fin wall itself becomes an overhang and may print poorly." }
+                annotation { "Name" : "Макс. наклон грани (от вертикали)",
+                             "Description" : "Предельный наклон грани от вертикали для бокового ребра. Ребро наклоняется вместе с гранью, поэтому при угле больше 45 град. его стенка сама становится нависанием и может плохо печататься." }
                 isAngle(definition.finMaxLean, FIN_LEAN_BOUNDS);
             }
         }
 
         // ── Bed pad ──────────────────────────────────────────────────────────
-        annotation { "Group Name" : "Bed pad", "Collapsed By Default" : true }
+        annotation { "Group Name" : "Опорная площадка", "Collapsed By Default" : true }
         {
-            annotation { "Name" : "Bed pad", "Default" : PadMode.AUTO,
-                         "Description" : "A thin oval brim under where the part touches the bed, lightly tacked to it. Auto adds one only when the part rests on an edge or point (under 60 sq mm of flat contact), which would otherwise peel off." }
+            annotation { "Name" : "Опорная площадка", "Default" : PadMode.AUTO,
+                         "Description" : "Тонкая овальная кайма под местом касания детали со столом, слегка соединённая с деталью. Авто добавляет её только при опоре на ребро или точку (плоский контакт меньше 60 кв. мм), чтобы деталь не оторвалась." }
             definition.padMode is PadMode;
         }
 
         // ── Print settings ───────────────────────────────────────────────────
-        annotation { "Group Name" : "Print settings", "Collapsed By Default" : false }
+        annotation { "Group Name" : "Настройки печати", "Collapsed By Default" : false }
         {
-            annotation { "Name" : "Layer height (tine height)",
-                         "Description" : "Set this to your slicer's layer height. Each tine is exactly one layer tall and lined up with the layers, so it prints as a single strand that snaps clean." }
+            annotation { "Name" : "Высота слоя (высота перемычек)",
+                         "Description" : "Укажите высоту слоя из слайсера. Каждая перемычка имеет высоту ровно в один слой и совмещена с сеткой слоёв: она печатается одной нитью и аккуратно отламывается." }
             isLength(definition.layerHeight, LAYER_BOUNDS);
 
-            annotation { "Name" : "Material", "Default" : SupportMaterial.PLA,
-                         "Description" : "Sets the clearances. PETG sticks to supports much harder than PLA, so it gets bigger gaps and shallower tines. Custom exposes every value." }
+            annotation { "Name" : "Материал", "Default" : SupportMaterial.PLA,
+                         "Description" : "Задаёт зазоры. PETG прилипает к поддержкам намного сильнее PLA, поэтому для него зазоры больше, а перемычки входят менее глубоко. Свой профиль открывает все значения." }
             definition.material is SupportMaterial;
 
             if (definition.material == SupportMaterial.CUSTOM)
             {
-                annotation { "Name" : "Support gap",
-                             "Description" : "Air gap between the supports and the part. Larger = easier removal, rougher underside." }
+                annotation { "Name" : "Зазор поддержки",
+                             "Description" : "Воздушный зазор между поддержками и деталью. Больше — легче удаление, но грубее нижняя поверхность." }
                 isLength(definition.supportGap, GAP_BOUNDS);
 
-                annotation { "Name" : "Rib tine bite",
-                             "Description" : "How far each rib tine reaches into the part. Smaller = smaller marks, weaker grip." }
+                annotation { "Name" : "Глубина перемычек ребра",
+                             "Description" : "Глубина входа перемычки ребра в деталь. Меньше — меньше следов, слабее удержание." }
                 isLength(definition.propBite, PROP_BITE_BOUNDS);
 
-                annotation { "Name" : "Side fin tine bite",
-                             "Description" : "How far each side-fin tine reaches into the part." }
+                annotation { "Name" : "Глубина перемычек бокового ребра",
+                             "Description" : "Глубина входа перемычки бокового ребра в деталь." }
                 isLength(definition.finBite, FIN_BITE_BOUNDS);
 
-                annotation { "Name" : "Base height (rib flanges + pad)",
-                             "Description" : "Height of everything lying on the bed: the rib flanges and the bed pad share it, so they meet with no step. Rounded to whole layers." }
+                annotation { "Name" : "Высота основания (полки рёбер + площадка)",
+                             "Description" : "Высота всех элементов на столе: полки рёбер и опорная площадка имеют одну высоту и соединяются без ступеньки. Округляется до целых слоёв." }
                 isLength(definition.padHeight, PAD_HEIGHT_BOUNDS);
 
-                annotation { "Name" : "Pad grab (negative = gap)",
-                             "Description" : "How far the pad overlaps the part's underside to hold it. Negative leaves a gap instead, for easier removal." }
+                annotation { "Name" : "Захват площадки (отрицательный = зазор)",
+                             "Description" : "Глубина пересечения площадки с нижней поверхностью детали для удержания. Отрицательное значение оставляет зазор для более лёгкого удаления." }
                 isLength(definition.padGrab, PAD_GRAB_BOUNDS);
             }
         }
 
-        annotation { "Name" : "Show detected overhangs", "Default" : false,
-                     "Description" : "Highlight the overhang faces that were found, in red, to check detection." }
+        annotation { "Name" : "Показать найденные нависания", "Default" : false,
+                     "Description" : "Подсветить найденные нависающие грани красным для проверки." }
         definition.showOverhangs is boolean;
     }
     {
         const parts = evaluateQuery(context, definition.parts);
         if (size(parts) == 0)
         {
-            throw regenError("Select at least one part to support.", ["parts"]);
+            throw regenError("Выберите хотя бы одну деталь для поддержки.", ["parts"]);
         }
 
         const cfg = resolveConfig(definition);
@@ -409,12 +409,12 @@ export const supportFins = defineFeature(function(context is Context, id is Id, 
             }
         }
 
-        var msg = total.regions ~ " overhang region(s): " ~ total.walls ~ " rib(s), " ~
-                  total.tines ~ " tine(s), " ~ total.fins ~ " side fin(s), " ~
-                  total.pads ~ " bed pad(s).";
+        var msg = total.regions ~ " областей нависания: " ~ total.walls ~ " рёбер, " ~
+                  total.tines ~ " перемычек, " ~ total.fins ~ " боковых рёбер, " ~
+                  total.pads ~ " опорных площадок.";
         if (total.unserved > 0)
         {
-            msg = msg ~ " " ~ total.unserved ~ " region(s) got no wall (too small, too low, or over the part rather than the plate).";
+            msg = msg ~ " " ~ total.unserved ~ " областей без стенки (слишком малы, низки или находятся над деталью, а не над столом).";
         }
         for (var w in warnings)
         {
@@ -423,11 +423,11 @@ export const supportFins = defineFeature(function(context is Context, id is Id, 
 
         if (total.bodies == 0)
         {
-            reportFeatureWarning(context, id, "No supports generated. " ~ msg);
+            reportFeatureWarning(context, id, "Поддержки не созданы. " ~ msg);
         }
         else
         {
-            reportFeatureInfo(context, id, msg ~ " Export each part together with its supports as one STL; slice with supports off.");
+            reportFeatureInfo(context, id, msg ~ " Экспортируйте каждую деталь с её поддержками в один STL; отключите поддержки в слайсере.");
         }
     });
 
@@ -548,7 +548,7 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
     if (!definition.seatOnBed && env.partBox.minCorner[2] < -0.01 * millimeter)
     {
         result.warnings = append(result.warnings,
-                "Part extends below the selected plate; enable 'Seat part on plate' or move the plate.");
+                "Деталь выходит ниже выбранного стола; включите «Установить деталь на стол» или переместите стол.");
     }
 
     const faceData = classifyFaces(context, env, definition);
@@ -623,7 +623,7 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
         if (!keepOut.offsetOk)
         {
             result.warnings = append(result.warnings,
-                    "Could not offset the part for clearance; used a vertical-only gap, so check wall flanks.");
+                    "Не удалось расширить деталь для зазора; создан только вертикальный зазор. Проверьте боковые стороны стенок.");
         }
         const propsQ = qBodyType(qCreatedBy(pid + "props", EntityType.BODY), BodyType.SOLID);
         try silent
@@ -638,7 +638,7 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
         catch
         {
             opDeleteBodies(context, pid + "propCutFail", { "entities" : propsQ });
-            result.warnings = append(result.warnings, "Clearance cut failed; overhang ribs were removed.");
+            result.warnings = append(result.warnings, "Не удалось вырезать зазор; рёбра под нависаниями удалены.");
             propTines = [];
             result.walls = 0;
         }
@@ -666,8 +666,8 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
         if (fins.fins == 0)
         {
             result.warnings = append(result.warnings,
-                    "No side fin fit: a fin needs a flat face at least 4 x 4 mm that leans no more than the Max face lean " ~
-                    "from vertical, reaches down near the bed, and has open space beside it.");
+                    "Боковое ребро не подошло: нужна плоская грань не меньше 4 x 4 мм с наклоном не больше Макс. наклона грани " ~
+                    "от вертикали, доходящая почти до стола, со свободным пространством рядом.");
         }
     }
 
@@ -698,12 +698,12 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
     }
     else
     {
-        result.warnings = append(result.warnings, "Supports could not be merged; tines are separate bodies.");
+        result.warnings = append(result.warnings, "Не удалось объединить поддержки; перемычки остались отдельными телами.");
     }
 
     const bodies = evaluateQuery(context, supQ);
     result.bodies = size(bodies);
-    var partName = "Part";
+    var partName = "Деталь";
     try silent
     {
         partName = getProperty(context, { "entity" : part, "propertyType" : PropertyType.NAME });
@@ -713,7 +713,7 @@ function supportPart(context is Context, pid is Id, part is Query, bedPlane is P
         setProperty(context, {
                     "entities" : bodies[i],
                     "propertyType" : PropertyType.NAME,
-                    "value" : partName ~ " support " ~ (i + 1)
+                    "value" : partName ~ " поддержка " ~ (i + 1)
                 });
     }
     if (size(bodies) > 0)
@@ -1407,11 +1407,11 @@ function buildStabilizeFins(context is Context, fid is Id, env is map, definitio
         const s = finSite(context, env, faces[i], isAuto);
         if (s.ok)
         {
-            sites = append(sites, mergeMaps(s, { "label" : "face " ~ (i + 1) }));
+            sites = append(sites, mergeMaps(s, { "label" : "грань " ~ (i + 1) }));
         }
         else if (!isAuto)
         {
-            notes = append(notes, "Side fin, face " ~ (i + 1) ~ ": " ~ s.reason ~ ".");
+            notes = append(notes, "Боковое ребро, грань " ~ (i + 1) ~ ": " ~ s.reason ~ ".");
         }
     }
     sites = sort(sites, function(a, b)
@@ -1475,7 +1475,7 @@ function buildStabilizeFins(context is Context, fid is Id, env is map, definitio
         }
         else if (!isAuto)
         {
-            out.notes = append(out.notes, "Side fin, " ~ s.label ~ ": " ~ why ~ ".");
+            out.notes = append(out.notes, "Боковое ребро, " ~ s.label ~ ": " ~ why ~ ".");
         }
     }
     return out;
@@ -1498,8 +1498,8 @@ function finSite(context is Context, env is map, f is Query, isAuto is boolean) 
     // on it, and float noise would otherwise accept one side and reject the other.
     if (abs(nz) > sin(env.cfg.finLean) + 1e-4)
     {
-        return { "ok" : false, "reason" : "leans more than the Max face lean (" ~
-                 roundToPrecision(env.cfg.finLean / degree, 1) ~ " deg) from vertical" };
+        return { "ok" : false, "reason" : "наклон превышает Макс. наклон грани (" ~
+                 roundToPrecision(env.cfg.finLean / degree, 1) ~ " град.) от вертикали" };
     }
     const uDir = normalize(cross(env.up, n));   // horizontal, along the face
     const tDir = cross(n, uDir);                 // up the face
@@ -1513,7 +1513,7 @@ function finSite(context is Context, env is map, f is Query, isAuto is boolean) 
     const area = evArea(context, { "entities" : f });
     if (uLen < FIN_MIN_PATCH || tLen < FIN_MIN_PATCH || area < FIN_MIN_AREA)
     {
-        return { "ok" : false, "reason" : "smaller than 4 x 4 mm" };
+        return { "ok" : false, "reason" : "меньше 4 x 4 мм" };
     }
 
     var s = {
@@ -1557,7 +1557,7 @@ function finSite(context is Context, env is map, f is Query, isAuto is boolean) 
     }
 
     var windows = [];
-    var why = "no usable stretch of face";
+    var why = "нет подходящего участка грани";
     for (var cu in centres)
     {
         const w = finWindow(s, cu - len / 2, cu + len / 2, isAuto);
@@ -1608,26 +1608,26 @@ function finWindow(s is map, u0 is ValueWithUnits, u1 is ValueWithUnits, isAuto 
         const r = tRangeAt(s.segs, u);
         if (r == undefined)
         {
-            return { "ok" : false, "reason" : "face is too narrow or irregular for a fin" };
+            return { "ok" : false, "reason" : "грань слишком узкая или неправильной формы для ребра" };
         }
         tTop = tTop == undefined ? r[1] : min(tTop, r[1]);
         tBot = tBot == undefined ? r[0] : min(tBot, r[0]);
     }
     if (tTop - tBot < FIN_MIN_PATCH)
     {
-        return { "ok" : false, "reason" : "face is too short for a fin" };
+        return { "ok" : false, "reason" : "грань слишком короткая для ребра" };
     }
     const zTop = s.zO + tTop * s.tz;
     const zBot = s.zO + tBot * s.tz;
     if (zTop < FIN_BASE_H + 3 * millimeter)
     {
-        return { "ok" : false, "reason" : "face is too close to the bed" };
+        return { "ok" : false, "reason" : "грань слишком близко к столу" };
     }
     // a bare stilt holds little and is most of the plastic
     const stilt = max(0 * millimeter, zBot - FIN_BASE_H);
     if (isAuto && stilt > FIN_STILT_FRAC * zTop)
     {
-        return { "ok" : false, "reason" : "face starts too high above the bed" };
+        return { "ok" : false, "reason" : "грань начинается слишком высоко над столом" };
     }
     const grip = zTop - max(zBot, FIN_BASE_H);
     return {
@@ -1732,7 +1732,7 @@ function buildFinAt(context is Context, fid is Id, env is map, s is map, win is 
     const tTop = win.tTop;   // never above the face anywhere across the window
     if (tTop - rr <= max(tBedIn, tBedOut) + 0.5 * millimeter)
     {
-        return { "ok" : false, "reason" : "face is too close to the bed" };
+        return { "ok" : false, "reason" : "грань слишком близко к столу" };
     }
     const below = -0.5 * millimeter;
     const tLow = min((below - s.zO - wIn * s.nz) / s.tz, (below - s.zO - wOut * s.nz) / s.tz);
@@ -1795,7 +1795,7 @@ function buildFinAt(context is Context, fid is Id, env is map, s is map, win is 
     if (clearance < gap - 0.02 * millimeter)
     {
         opDeleteBodies(context, fid + "clash", { "entities" : finQ });
-        return { "ok" : false, "reason" : "the fin or its foot would touch another part of the model" };
+        return { "ok" : false, "reason" : "ребро или его основание коснётся другого участка модели" };
     }
 
     // ── tines: rows dense low, spreading with height ──
@@ -1847,7 +1847,7 @@ function buildFinAt(context is Context, fid is Id, env is map, s is map, win is 
     if (size(anchors) < FIN_MIN_TINES)
     {
         opDeleteBodies(context, fid + "noGrip", { "entities" : finQ });
-        return { "ok" : false, "reason" : "fewer than " ~ FIN_MIN_TINES ~ " tines could grip the face" };
+        return { "ok" : false, "reason" : "меньше " ~ FIN_MIN_TINES ~ " перемычек могут удерживать грань" };
     }
 
     // tine spans from grip-deep in the wall to bite-deep in the part, measured normal to the face

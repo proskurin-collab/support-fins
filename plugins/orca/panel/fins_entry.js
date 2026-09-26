@@ -41,7 +41,7 @@ export function computeFins(positions, options = {}) {
   const input = (positions instanceof Float32Array || positions instanceof Float64Array)
     ? positions : Float64Array.from(positions);
   if (input.length === 0 || input.length % 9 !== 0) {
-    throw new Error(`positions must be a non-empty triangle soup (9 floats/face), got ${input.length}`);
+    throw new Error(`positions должен быть непустым массивом треугольников (9 чисел на грань), получено ${input.length}`);
   }
   // Seat the part at the origin OURSELVES, in float64, before the engine sees it.
   // The engine welds vertices on a 1-micron grid of ABSOLUTE coordinates, so the

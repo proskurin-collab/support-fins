@@ -40,19 +40,19 @@ for (let f = 0; f < topo.nFaces; f++) {
     byNormal.set(k, (byNormal.get(k) ?? 0) + topo.area[f]);
   }
 }
-console.log(`faces ${topo.nFaces}  upright ${up} (${(100 * up / topo.nFaces).toFixed(0)}%)`);
-console.log(`area  ${tot.toFixed(0)} mm2  upright ${upArea.toFixed(0)} mm2`);
-console.log(`adjacency pairs ${topo.adjA.length}  (2-manifold would be ~${(topo.nFaces * 3 / 2) | 0})`);
-console.log(`welded vertices ${topo.vertexCount}  edges ${topo.edgeCount}`);
+console.log(`граней ${topo.nFaces}  вертикальных ${up} (${(100 * up / topo.nFaces).toFixed(0)}%)`);
+console.log(`площадь  ${tot.toFixed(0)} мм2  вертикальная ${upArea.toFixed(0)} мм2`);
+console.log(`пар смежности ${topo.adjA.length}  (для 2-многообразия было бы ~${(topo.nFaces * 3 / 2) | 0})`);
+console.log(`объединённых вершин ${topo.vertexCount}  рёбер ${topo.edgeCount}`);
 
 const top = [...byNormal.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-console.log('\nupright area by normal bucket (n*8 rounded):');
-for (const [k, v] of top) console.log(`  ${k.padEnd(14)} ${v.toFixed(0)} mm2`);
+console.log('\nвертикальная площадь по группам нормалей (округление n*8):');
+for (const [k, v] of top) console.log(`  ${k.padEnd(14)} ${v.toFixed(0)} мм2`);
 
 const patches = findWallPatches(topo, rot, res.offset);
-console.log(`\npatches kept: ${patches.length}`);
+console.log(`\nсохранено участков: ${patches.length}`);
 for (const p of patches.slice(0, 10)) {
-  console.log(`  area ${p.area.toFixed(0).padStart(6)}  faces ${String(p.faces.length).padStart(4)}` +
-              `  z ${p.z0.toFixed(1)}..${p.z1.toFixed(1)}  len ${(p.u1 - p.u0).toFixed(1)}` +
-              `  lean ${p.lean.toFixed(0)}  flat ${p.flatness.toFixed(3)}`);
+  console.log(`  площадь ${p.area.toFixed(0).padStart(6)}  граней ${String(p.faces.length).padStart(4)}` +
+              `  z ${p.z0.toFixed(1)}..${p.z1.toFixed(1)}  длина ${(p.u1 - p.u0).toFixed(1)}` +
+              `  наклон ${p.lean.toFixed(0)}  плоскостность ${p.flatness.toFixed(3)}`);
 }

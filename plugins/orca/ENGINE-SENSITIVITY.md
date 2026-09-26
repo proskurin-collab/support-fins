@@ -1,54 +1,52 @@
-# Engine note: fin geometry moves under float noise
+# Заметка о движке: геометрия рёбер меняется из-за погрешности чисел
 
-Found while pinning the Orca path against the website. Not an Orca bug and not
-blocking. It's written down here with a repro so you can decide what to do with it.
+Обнаружено при сопоставлении результатов Orca с сайтом. Это не ошибка Orca и не блокирующая
+проблема. Здесь приведён способ воспроизведения, чтобы можно было решить, что с ней делать.
 
-## What happens
+## Что происходит
 
-On `lbracket`, shifting every vertex coordinate by **1e-13 mm** (far below
-anything a printer, an STL writer or a user could produce on purpose) changes the
-fin mesh. The overhang analysis and the number of fins (`braceCount`) don't
-change. The difference is in the tine comb along the top of each fin.
+На `lbracket` сдвиг каждой координаты вершины на **1e-13 мм** (намного меньше того,
+что принтер, программа записи STL или пользователь могли бы создать намеренно) меняет
+сетку рёбер. Анализ нависаний и число рёбер (`braceCount`) не меняются. Отличается гребёнка
+соединительных перемычек вдоль верха каждого ребра.
 
 ```
 deno run --allow-read plugins/orca/tests/sensitivity_repro.js
 ```
 
-Re-run against current `main` (after the `plugins/` move):
+Повторная проверка текущей `main` (после переноса в `plugins/`):
 
-| pose | baseline | +/-1e-13 mm | same part moved to x=137, y=88 then re-centred |
+| положение | исходный результат | +/-1e-13 мм | та же деталь сдвинута в x=137, y=88 и снова центрирована |
 |---|---|---|---|
-| Y20 | 18 tines, 1884 tris | 18 tines, 1864 tris | 18 tines, 1864 tris |
-| Y35 | 17 tines, 1652 tris | 17 tines, 1632 tris | 17 tines, 1692 tris |
-| Y50 | 20 tines, 2068 tris | 20 tines, 2048 tris | 20 tines, 2088 tris |
+| Y20 | 18 перемычек, 1884 треугольника | 18 перемычек, 1864 треугольника | 18 перемычек, 1864 треугольника |
+| Y35 | 17 перемычек, 1652 треугольника | 17 перемычек, 1632 треугольника | 17 перемычек, 1692 треугольника |
+| Y50 | 20 перемычек, 2068 треугольников | 20 перемычек, 2048 треугольников | 20 перемычек, 2088 треугольников |
 
-When I first reported this, the tine **count** flipped too (for example Y35 went from
-17 to 16 tines at 1e-13 mm). On current `main` the count holds steady and only the
-triangle count moves, so the recent tine work seems to have fixed most of it.
-Some station keep/drop decisions still flip, though.
+При первом сообщении менялось и **число** перемычек (например, для Y35 — с 17 на 16
+при сдвиге 1e-13 мм). В текущей `main` оно стабильно, меняется только число треугольников:
+похоже, недавние изменения перемычек устранили большую часть проблемы. Однако некоторые
+решения о сохранении или пропуске точек размещения всё ещё меняются.
 
-## Why it matters
+## Почему это важно
 
-- Two users with the "same" part can get slightly different tine combs, and the
-  website can give a different comb for "rotate in-app" vs "import an STL that
-  was saved already rotated".
-- Tests can't pin output vertex-for-vertex, only at the fin level.
+- Два пользователя с «одинаковой» деталью могут получить слегка разные гребёнки перемычек.
+  Сайт может выдать разные результаты для поворота в приложении и импорта уже повёрнутого STL.
+- Тесты могут фиксировать результат на уровне рёбер, но не отдельных вершин.
 
-## Likely cause (unconfirmed)
+## Вероятная причина (не подтверждена)
 
-A ray-parity or on-edge test hitting exactly-degenerate cases on axis-aligned
-geometry (e.g. `insidePart` / `stationIsClear` rays grazing an edge or vertex), so
-a 1e-13 nudge flips a keep/drop decision for a station. `lbracket` is all
-axis-aligned faces, which makes grazing hits common.
+Проверка чётности пересечений луча или попадания на ребро сталкивается с точно вырожденными
+случаями на геометрии, выровненной по осям (например, лучи `insidePart` / `stationIsClear`
+касаются ребра или вершины). Сдвиг на 1e-13 меняет решение о точке размещения. У `lbracket`
+все грани выровнены по осям, поэтому касательные попадания часты.
 
-## Possible fixes
+## Возможные исправления
 
-1. Snap input vertices to a fixed grid (e.g. 1e-6 mm) after posing, before analysis.
-   That makes results repeatable but moves the problem to grid boundaries.
-2. Make the keep/drop decisions robust: jitter the ray direction by a fixed
-   irrational angle, or use a tolerance band and resolve ties deterministically.
+1. После ориентации, до анализа, привязывать входные вершины к фиксированной сетке
+   (например, 1e-6 мм). Результат становится повторяемым, но проблема переносится на границы сетки.
+2. Сделать решения о сохранении и пропуске устойчивыми: отклонять луч на фиксированный
+   иррациональный угол или использовать полосу допуска с детерминированным разрешением равенств.
 
-The Orca plugin does option 1 in `panel/fins_entry.js`: it re-centres the posed part
-in float64 and snaps it to a 1 nm grid before calling the engine. With the snap,
-a part's fins are identical wherever it sits on the plate
-(`tests/entry.test.js`, "moving a part around the plate never changes its fins").
+Плагин Orca использует вариант 1 в `panel/fins_entry.js`: повторно центрирует деталь в
+float64 и привязывает её к сетке 1 нм перед вызовом движка. С привязкой рёбра одинаковы
+в любом месте стола (`tests/entry.test.js`, "moving a part around the plate never changes its fins").

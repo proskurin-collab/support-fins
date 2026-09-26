@@ -1132,13 +1132,13 @@ export function gripPatches(topo, result, rot) {
  */
 export function buildFinOnPatch(topo, result, rot, patch, opts = {}) {
   if (patch.n.z >= -0.05) {
-    return { ok: false, reason: 'aim at a downward / overhang face — a support fin '
-      + 'holds an overhang up from below, not a vertical side' };
+    return { ok: false, reason: 'выберите нижнюю или нависающую грань — ребро поддержки '
+      + 'подпирает нависание снизу, а не вертикальную сторону' };
   }
   const w = buildPerpFins(patch, topo, rot, result.offset, { tines: opts.tines, tineDensity: opts.tineDensity });
   if (!w.count) {
-    return { ok: false, reason: 'this face is too small or shallow to stand a fin '
-      + 'under — tilt it steeper, or pick a broader overhang' };
+    return { ok: false, reason: 'эта грань слишком мала или недостаточно наклонена для ребра '
+      + 'под ней — увеличьте наклон или выберите более широкое нависание' };
   }
   return { ok: true, triangles: w.triangles, info: { count: w.count, tines: w.tines, perp: true } };
 }

@@ -48,7 +48,7 @@ def read_moves(path):
 def main(gcode, fins_stl):
     mv = read_moves(gcode)
     if not len(mv):
-        print('no extruding moves found')
+        print('перемещения с экструзией не найдены')
         return 1
 
     m = trimesh.load(fins_stl, force='mesh')
@@ -60,9 +60,9 @@ def main(gcode, fins_stl):
     # register: the slicer re-centres the model on the bed, so line up centroids
     gx = (mv[:, 1].min() + mv[:, 3].max()) / 2
     gy = (mv[:, 2].min() + mv[:, 4].max()) / 2
-    print(f'{len(mv)} extruding moves, {len(np.unique(mv[:, 0]))} layers, '
-          f'z up to {mv[:, 0].max():.1f}mm')
-    print(f'registered on bed centre ({gx:.1f}, {gy:.1f})\n')
+    print(f'{len(mv)} перемещений с экструзией, {len(np.unique(mv[:, 0]))} слоёв, '
+          f'z до {mv[:, 0].max():.1f}мм')
+    print(f'совмещено с центром стола ({gx:.1f}, {gy:.1f})\n')
 
     for i, w in enumerate(walls):
         lo, hi = w.bounds
@@ -75,30 +75,30 @@ def main(gcode, fins_stl):
                  (mv[:, 2] - gy >= lo[1] - pad) & (mv[:, 2] - gy <= hi[1] + pad) &
                  (mv[:, 0] >= lo[2] - 0.01) & (mv[:, 0] <= hi[2] + 0.01))
         zs = mv[inbox, 0]
-        print(f'FIN {i + 1}: wall box x {lo[0]:.1f}..{hi[0]:.1f}  '
+        print(f'РЕБРО {i + 1}: габариты стенки x {lo[0]:.1f}..{hi[0]:.1f}  '
               f'y {lo[1]:.1f}..{hi[1]:.1f}  z {lo[2]:.1f}..{hi[2]:.1f}')
         if not len(zs):
-            print('   NOTHING PRINTED IN THIS FOOTPRINT\n')
+            print('   В ЭТОЙ ПРОЕКЦИИ НИЧЕГО НЕ НАПЕЧАТАНО\n')
             continue
         layers = np.unique(zs)
         expect = (hi[2] - lo[2]) / 0.2
-        print(f'   {inbox.sum()} moves across {len(layers)} layers, '
+        print(f'   {inbox.sum()} перемещений на {len(layers)} слоях, '
               f'z {zs.min():.2f}..{zs.max():.2f}')
-        print(f'   wall is {hi[2] - lo[2]:.1f}mm tall => ~{expect:.0f} layers expected, '
-              f'{len(layers)} printed ({100 * len(layers) / expect:.0f}%)')
-        print(f'   top printed layer {zs.max():.2f} vs fin top {hi[2]:.2f}'
-              f'  ({100 * zs.max() / hi[2]:.0f}% of fin height)\n')
+        print(f'   высота стенки {hi[2] - lo[2]:.1f}мм => ~{expect:.0f} слоёв ожидается, '
+              f'{len(layers)} напечатано ({100 * len(layers) / expect:.0f}%)')
+        print(f'   верхний напечатанный слой {zs.max():.2f}; верх ребра {hi[2]:.2f}'
+              f'  ({100 * zs.max() / hi[2]:.0f}% высоты ребра)\n')
 
     for i, b in enumerate(bases):
         lo, hi = b.bounds
         inbox = ((mv[:, 1] - gx >= lo[0]) & (mv[:, 1] - gx <= hi[0]) &
                  (mv[:, 2] - gy >= lo[1]) & (mv[:, 2] - gy <= hi[1]) &
                  (mv[:, 0] <= 1.05))
-        print(f'BASE {i + 1}: {inbox.sum()} moves in the first 1mm '
-              f'(the disc that holds the fin down)')
+        print(f'ОСНОВАНИЕ {i + 1}: {inbox.sum()} перемещений в первом 1мм '
+              f'(диск, удерживающий ребро на столе)')
 
-    print(f'\n{len(tines)} tines in the mesh; each is {0.3}mm tall, so at a '
-          f'0.2mm layer they land in 1-2 layers each')
+    print(f'\n{len(tines)} перемычек в сетке; высота каждой {0.3}мм, поэтому при слое '
+          f'0.2мм каждая занимает 1-2 слоя')
     return 0
 
 

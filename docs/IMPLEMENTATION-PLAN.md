@@ -1,23 +1,22 @@
-# Implementation plan — M5c, M6b, M7b
+# План реализации — M5c, M6b, M7b
 
-> **STATUS 2026-07-29: M5c and M6b are DONE and committed** (M6b landed as
-> `splitRegion`/`patchTracks` in `prop.js`; M5c flipped the default and the
-> selector labels; the §6 measurement ran and both claims verified — numbers
-> in `docs/ROADMAP.md` "M6b + M5c status"). §§3–4 below are kept for the
-> reasoning and the invariants; the next open milestone is **M7b** (§5),
-> then M8/M9.
+> **СОСТОЯНИЕ НА 2026-07-29: M5c и M6b ЗАВЕРШЕНЫ и закоммичены** (M6b реализован
+> через `splitRegion`/`patchTracks` в `prop.js`; M5c сменил режим по умолчанию и названия
+> в переключателе; измерение из §6 выполнено, оба утверждения подтверждены — числа
+> в `docs/ROADMAP.md`, раздел «Состояние M6b + M5c»). Разделы §§3–4 оставлены ради
+> обоснования и инвариантов; следующий открытый этап — **M7b** (§5), затем M8/M9.
 
-Self-contained handoff. `docs/ROADMAP.md` is the canonical *why*; this file is
-the *how*, written so it can be executed without re-deriving anything. Every
-number below was measured on this machine on 2026-07-28, not estimated.
+Самодостаточное описание для передачи работы. `docs/ROADMAP.md` — основной источник
+объяснений *почему*, а этот файл описывает *как*, чтобы выполнять работу без повторного
+исследования. Все числа ниже измерены на этом компьютере 2026-07-28, а не оценены на глаз.
 
-**Repo:** `~/projects/support-fins` (MIT, remote `gittrahan/support-fins`).
+**Репозиторий:** `~/projects/support-fins` (MIT, удалённый репозиторий `gittrahan/support-fins`).
 
 ---
 
-## 0. How to run everything
+## 0. Как всё запустить
 
-No build step, no `node`. Deno for headless checks, Python for judging.
+Без сборки и `node`. Deno для проверок без интерфейса, Python для оценки результата.
 
 ```bash
 cd ~/projects/support-fins/prototype
@@ -30,18 +29,18 @@ deno run --allow-read --allow-write verify_fins.js \
 python3 check_stl.py /tmp/out/*.stl
 ```
 
-`verify_fins.js` args: `<model.stl> <tiltDeg> <outPath.stl> <mode>` where mode is
-`prop` or `stabilize`. It imports the **shipping** modules (`overhangs.js`,
-`planes.js`, `fins.js`, `prop.js` have no three.js import), so it validates real
-code, not a reimplementation.
+Аргументы `verify_fins.js`: `<model.stl> <tiltDeg> <outPath.stl> <mode>`, где режим —
+`prop` или `stabilize`. Скрипт импортирует **рабочие** модули (`overhangs.js`,
+`planes.js`, `fins.js`, `prop.js` не импортируют three.js), поэтому проверяет настоящий
+код, а не его повторную реализацию.
 
-**The standard matrix** is 4 models × tilts 0/25/40/60:
-`voron_drive_frame`, `voron_filter_housing`, `hub_corner`, `hub_post_foot` in
-`web/dev-models/`. Always run the whole matrix; single cases mislead.
+**Стандартная матрица** — 4 модели × наклоны 0/25/40/60:
+`voron_drive_frame`, `voron_filter_housing`, `hub_corner`, `hub_post_foot` из
+`web/dev-models/`. Всегда запускайте всю матрицу: отдельные случаи вводят в заблуждение.
 
-`dev-models/` is gitignored. `hub_corner.stl` there must be the BARE part
-(the old copy was hub.py's supported output — see ROADMAP "Python parity").
-Regenerate it from the video repo:
+`dev-models/` исключён из git. Находящийся там `hub_corner.stl` должен содержать ЧИСТУЮ
+деталь (старая копия была результатом hub.py с поддержками; см. «Соответствие Python»
+в ROADMAP). Создайте его заново из репозитория видео:
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender -b -P \
@@ -51,258 +50,255 @@ python3 ~/claude-video/tools/support/manifold_repair.py /tmp/hc.stl
 # then rotate 180 about X (print orientation) and save over dev-models/hub_corner.stl
 ```
 
-Browser: `python3 dev-server.py` then open the printed URL. Do **not** use
-`python3 -m http.server` — it sends no `Cache-Control`, so edited ES modules are
-silently served stale and it looks exactly like a logic bug.
+Браузер: `python3 dev-server.py`, затем откройте выведенный URL. **Не** используйте
+`python3 -m http.server`: он не отправляет `Cache-Control`, поэтому изменённые ES-модули
+незаметно подменяются устаревшими из кеша, что выглядит как ошибка логики.
 
-`deno check web/app.js` reports 4 `TS2307` errors for `three` and
-`three/addons/...`. That is the browser import map, which Deno does not read.
-**Expected, not a regression.** The five geometry modules
-(`prop.js`, `fins.js`, `overhangs.js`, `planes.js`, `inside.js`) check clean.
+`deno check web/app.js` сообщает 4 ошибки `TS2307` для `three` и
+`three/addons/...`. Это карта импортов браузера, которую Deno не читает.
+**Ожидаемое поведение, не регрессия.** Пять геометрических модулей
+(`prop.js`, `fins.js`, `overhangs.js`, `planes.js`, `inside.js`) проходят проверку.
 
 ---
 
-## 1. Baseline as of 2026-07-28 (M5a + M5b landed)
+## 1. Исходное состояние на 2026-07-28 (M5a + M5b реализованы)
 
-| mode | clean | built but failed | built nothing | overhang coverage |
+| режим | без ошибок | построено с ошибками | ничего не построено | покрытие нависаний |
 |---|---|---|---|---|
-| Stabilize (fin) | 8/12 | 0 | 4 | **4%** |
-| Prop (wall) | 8/16 | 0–1 | 6–7 | **13%** |
+| Стабилизация (ребро) | 8/12 | 0 | 4 | **4%** |
+| Подпорка (стенка) | 8/16 | 0–1 | 6–7 | **13%** |
 
-Breakaway gaps measure **0.15–0.22 mm** against a 0.2 spec. Every wall is
-vertical and seated at z = 0.
+Измеренные зазоры для отламывания — **0.15–0.22 мм** при требовании 0.2.
+Все стенки вертикальны и стоят на z = 0.
 
-`check_stl.py` uses `trimesh.sample.sample_surface`, which is **random**, so the
-clean count moves by ±1 between runs on marginal cases. Do not chase a one-case
-change; re-run before believing it.
+`check_stl.py` использует `trimesh.sample.sample_surface`, то есть **случайную** выборку,
+поэтому на пограничных случаях число успешных результатов меняется на ±1 между запусками.
+Не гонитесь за изменением в один случай; сначала повторите запуск.
 
-**Of the 7 Prop empties, 4 are correct refusals**, and must stay refusals:
+**Из 7 пустых результатов подпорок 4 — правильные отказы**, их нужно сохранить:
 
-- `hub_post_foot` at 0/25/40 — the part has **0.0 mm² of bed contact at every
-  tilt from 0° to 165°**; it balances on the tip of its own tapered foot.
-  Nothing you add can hold it. `seatingOf()` in `fins.js` classifies this as
-  `point` and the UI says so. Not a bug.
-- `voron_drive_frame` at 0° — its only overhangs are two 25 mm² regions sitting
-  0.5 mm off the plate with a 5.1 mm span. Correctly not worth a wall.
+- `hub_post_foot` при 0/25/40: у детали **0.0 мм² контакта со столом при любом наклоне
+  от 0° до 165°**; она балансирует на кончике собственной сужающейся опоры.
+  Никакая добавленная поддержка её не удержит. `seatingOf()` в `fins.js` классифицирует
+  это как `point`, и интерфейс сообщает об этом. Это не ошибка.
+- `voron_drive_frame` при 0°: единственные нависания — две области по 25 мм²
+  на высоте 0.5 мм над столом с пролётом 5.1 мм. Они действительно не стоят отдельной стенки.
 
-So the real miss count is ~3, and they are the target of M6b.
+Таким образом, реальных пропусков ~3; именно на них направлен M6b.
 
-**UPDATE 2026-07-29, after M6b:** 10/16 clean, 61% coverage, and the six
-remaining empties are ALL correct refusals — the four above plus
-`hub_post_foot`@60 (the point gate now refuses it too; the "wall" it used to
-get was a 104 mm scaffold on a part that cannot stand) and `hub_corner`@0
-(its ledge overhangs the part's own base tab — 10 of 18 faces raycast into
-the part before the plate — and its other regions are socket rings over the
-boss; the bed-only limitation, verified, not a miss). A narrow-foot retry was
-tried for `hub_corner`@0 and reverted: it rescued nothing anywhere.
+**ОБНОВЛЕНИЕ 2026-07-29, после M6b:** 10/16 без ошибок, покрытие 61%, все шесть оставшихся
+пустых результатов — правильные отказы. Это четыре случая выше и `hub_post_foot`@60
+(проверка точечной опоры теперь отклоняет и его; прежняя «стенка» была лесами высотой
+104 мм у детали, которая не может стоять) и `hub_corner`@0 (выступ нависает над язычком
+основания самой детали: лучи от 10 из 18 граней попадают в деталь раньше стола; остальные
+области — кольца гнёзд над бобышкой. Подтверждённое ограничение поддержек от стола,
+а не пропуск). Для `hub_corner`@0 пробовали повторное построение с узкой подошвой,
+но откатили: оно нигде не помогло.
 
-**UPDATE 2026-07-29, later — python parity (supersedes much of the above;
-canonical in ROADMAP "Python parity"):** the `hub_corner` dev model was
-hub.py's own supported OUTPUT (baked web), so its @0 "correct refusal" is
-retracted — on the bare part it builds. Point-seated parts with the pad ON
-now build (the pad seats them; the shelter hubs are the printed proof), so
-`hub_post_foot` 25/40/60 build at 69–96% coverage and only @0 (a bowl) and
-`drive_frame`@0 (trivial) stay empty. `tubeLine()` routes big curved regions
-to one lowest-line wall (fraction-of-area gate 0.4 at 25°, min 300 mm² —
-both thresholds measured; the worst-face version regressed the drive frame
-86%→34% and the no-floor version shipped a 0.297 gap over a pocket).
-Baseline now: **13/16 clean, 70% coverage, stabilize 12/12.** Known marginal:
-`hub_post_foot`@40 has one wall with a ~0.26 worst-spot gap; the checker's
-random sampling flips that case run to run.
-
----
-
-## 2. Invariants — re-breaking these is the main risk
-
-Each cost a measured regression. Do not "simplify" any of them.
-
-1. **`settleTop()` lowers only, never raises.** `surfaceZAt()` sees only the
-   *current region's* triangles, so a measured clearance larger than `gap`
-   usually means the nearest geometry belongs to another part of the mesh that
-   this pass cannot see. Raising on that evidence welded walls to what it could
-   not measure: the matrix went **6 clean → 0**, with gaps of 0.002–0.015 mm.
-2. **`settleTop()` corrects per station, not globally.** One global shift let a
-   single low triangle drop the whole wall **0.48 mm** below the part — too far
-   for the part to land on, which the checker correctly reports as a gap that is
-   too *large*.
-3. **Straightness is RMS-deviation/chord, never arc-length/chord.** Arc length
-   grows without bound as you sample a curve more finely. Same region,
-   `voron_drive_frame` @40, varying only station count:
-   arc/chord `1.14 → 1.44 → 1.59 → 2.08 → 3.16` (crosses a 2.0 gate on sampling
-   density alone) while RMS/chord holds at `0.081 → 0.069 → 0.062 → 0.065 →
-   0.065`. Evidence lives in `prototype/probe_straightness.js`; keep it runnable.
-4. **Trim, never discard.** A local problem must shorten the run
-   (`longestRun()`), not throw away the region. The old
-   `if (h < PROP.minHeight) return false` inside `sweep()` lost a 92 mm wall
-   because its first station sat where the underside meets the plate.
-5. **`sideClear` (0.35) must exceed `gap` (0.2).** The top is *meant* to come
-   within 0.2 mm and be bridged; the flanks are meant never to touch. Set to
-   0.15 first, which put the closest approach on the flank instead of the top on
-   4 of 6 walls.
-6. **The breakaway gap and the flank clearance are different measurements.**
-   `check_props()` separates them by where the nearest part surface sits
-   relative to the sample (above ⇒ breakaway, sideways ⇒ flank). Merging them
-   fails walls whose flanks are correctly standing well clear.
-7. **Do not chase generator-vs-checker disagreement with denser probes.** The
-   generator confirms with sampled points; the checker measures exact
-   surface-to-surface distance. They never converge. That chase is what produced
-   the "0.11–0.19 mm where 0.2 was intended" family the project carried for two
-   milestones. Measure the finished edge and move it (`settleTop`).
-8. **`hub_corner.stl` is a two-body mesh.** Always measure against the
-   `-part.stl` sidecar `verify_fins.js` writes. Taking the largest body once
-   produced a phantom "13 mm short wall" that was recorded as a real defect.
-9. **No boolean kernel, no build step, no new dependencies.** Added solids
-   overlap and are unioned by the slicer. Only `three.js` is vendored;
-   `three-mesh-bvh` is listed in the roadmap but has never been needed.
-10. **Rotation must stay a transform, never baked into geometry.** The weld and
-    the `inside.js` grid are built once per file in the mesh's ORIGINAL frame,
-    which is what keeps a gizmo drag at 1–6 ms.
+**ОБНОВЛЕНИЕ 2026-07-29, позже — соответствие Python (заменяет многое выше;
+основное описание в ROADMAP, «Соответствие Python»):** тестовая модель `hub_corner`
+была собственным РЕЗУЛЬТАТОМ hub.py с поддержками (встроенной стенкой), поэтому вывод
+о «правильном отказе» при @0 отозван: на чистой детали поддержка строится. Детали с точечной
+опорой теперь строятся при ВКЛЮЧЁННОЙ площадке (она даёт им основание; напечатанные узлы
+укрытия это подтверждают), поэтому `hub_post_foot` 25/40/60 получают покрытие 69–96%.
+Пустыми остаются только @0 (чаша) и `drive_frame`@0 (незначительное нависание).
+`tubeLine()` направляет крупные криволинейные области в одну стенку по нижней линии
+(порог доли площади 0.4 при 25°, минимум 300 мм²; оба порога измерены. Версия по худшей
+грани ухудшала drive frame с 86% до 34%, а версия без нижнего порога давала зазор 0.297
+над карманом). Текущая база: **13/16 без ошибок, покрытие 70%, стабилизация 12/12.**
+Известный пограничный случай: у `hub_post_foot`@40 одна стенка имеет зазор ~0.26
+в худшей точке; случайная выборка проверяющего скрипта меняет результат от запуска к запуску.
 
 ---
 
-## 3. M5c — flip the default to the wall
+## 2. Инварианты — главный риск в том, чтобы снова их нарушить
 
-**Smallest milestone, and the one the original complaint is about.** A user who
-loads a part today gets `stabilize`, whose fin stands *beside* the part and
-leans with the face it grips: 7 of 12 fins in the matrix lean 25–40°, worst a
-147 mm wall leaning 30° on a 12.6 mm stilt.
+Каждый уже обошёлся измеренной регрессией. Не «упрощайте» их.
 
-**This is a product decision the owner has not yet made.** Flipping trades a
-support that covers 4% but always builds something, for one that covers 13% but
-builds nothing on ~3 servable parts. **Confirm with the owner before landing.**
-If M6b lands first, the trade gets much easier and this becomes obvious.
+1. **`settleTop()` только опускает, никогда не поднимает.** `surfaceZAt()` видит лишь
+   треугольники *текущей области*, поэтому измеренный зазор больше `gap` обычно означает,
+   что ближайшая геометрия относится к другой части сетки, невидимой этому проходу.
+   Подъём по таким данным приваривал стенки к тому, что нельзя было измерить:
+   матрица изменилась с **6 успешных → 0**, зазоры стали 0.002–0.015 мм.
+2. **`settleTop()` корректирует каждое сечение отдельно, а не всю стенку.** Один глобальный
+   сдвиг позволял единственному низкому треугольнику опустить всю стенку на **0.48 мм**
+   ниже детали. Слишком далеко, чтобы деталь на неё опиралась; проверка правильно
+   сообщает о слишком *большом* зазоре.
+3. **Прямолинейность — это среднеквадратическое отклонение / хорда, никогда не длина дуги / хорда.**
+   Длина дуги неограниченно растёт при более частой выборке кривой. Одна область,
+   `voron_drive_frame` @40, меняется только число сечений:
+   дуга/хорда `1.14 → 1.44 → 1.59 → 2.08 → 3.16` (порог 2.0 пересекается только из-за
+   плотности выборки), а СКО/хорда остаётся `0.081 → 0.069 → 0.062 → 0.065 →
+   0.065`. Доказательство в `prototype/probe_straightness.js`; сохраняйте возможность его запуска.
+4. **Подрезать, не отбрасывать.** Локальная проблема должна укорачивать участок
+   (`longestRun()`), а не удалять область. Прежний
+   `if (h < PROP.minHeight) return false` внутри `sweep()` терял стенку 92 мм,
+   потому что её первое сечение находилось у примыкания нижней поверхности к столу.
+5. **`sideClear` (0.35) должен превышать `gap` (0.2).** Верх *должен* подходить на 0.2 мм,
+   чтобы зазор перекрывался печатью, а боковые стороны никогда не должны касаться детали.
+   Исходное значение 0.15 привело к тому, что у 4 из 6 стенок ближайшая точка оказалась
+   на боку, а не наверху.
+6. **Зазор для отламывания и боковой просвет — разные измерения.**
+   `check_props()` разделяет их по положению ближайшей поверхности детали относительно
+   точки выборки (выше ⇒ отламывание, сбоку ⇒ боковой просвет). Объединение ошибочно
+   отклоняет стенки, чьи бока правильно отстоят далеко от детали.
+7. **Не устраняйте расхождение генератора и проверки уплотнением выборки.** Генератор
+   подтверждает результат по отдельным точкам, а проверяющий скрипт измеряет точное
+   расстояние между поверхностями. Они никогда не сойдутся. Эта погоня породила
+   семейство «0.11–0.19 мм вместо 0.2», сопровождавшее проект два этапа.
+   Измеряйте готовую кромку и перемещайте её (`settleTop`).
+8. **`hub_corner.stl` — сетка из двух тел.** Всегда измеряйте относительно сопроводительного
+   `-part.stl`, который записывает `verify_fins.js`. Выбор крупнейшего тела однажды
+   породил вымышленную «стенку на 13 мм короче», записанную как настоящий дефект.
+9. **Без ядра булевых операций, сборки и новых зависимостей.** Добавленные тела пересекаются,
+   слайсер объединяет их. В репозиторий включена только `three.js`; `three-mesh-bvh`
+   упомянута в плане, но пока ни разу не понадобилась.
+10. **Поворот остаётся преобразованием, никогда не записывается в геометрию.** Объединение
+    вершин и сетка `inside.js` строятся один раз на файл в ИСХОДНОЙ системе координат;
+    именно это удерживает время кадра при перетаскивании манипулятора в пределах 1–6 мс.
 
-Changes:
+---
 
-1. `web/fins.js`, `buildFins()` — `const mode = opts.mode ?? 'stabilize'` becomes
-   `?? 'prop'`.
-2. `web/app.js` — the mode selector's default option and its label. Prop is
-   currently marked "experimental"; drop that, and mark Stabilize as **Brace**
-   (its real job: stopping a part balanced on an edge from toppling, which is
-   what Slant3D's fin is for). Do not delete Stabilize — `docs/FIN-SPEC.md`
-   still governs it and it stays available.
-3. Empty-state copy in `explainNoFins()` already reads Prop's own counters
+## 3. M5c — сделать стенку вариантом по умолчанию
+
+**Самый маленький этап и именно тот, которого касается исходная жалоба.** Сейчас после
+загрузки детали пользователь получает `stabilize`: ребро стоит *рядом* с деталью
+и наклоняется вместе с захватываемой гранью. В матрице 7 из 12 рёбер наклонены на 25–40°;
+худший случай — стенка высотой 147 мм, наклонённая на 30° и стоящая на ножке 12.6 мм.
+
+**Это продуктовое решение, которое владелец ещё не принял.** Смена заменяет поддержку
+с покрытием 4%, которая всегда что-то строит, на поддержку с покрытием 13%, которая
+ничего не строит для ~3 пригодных деталей. **Подтвердить с владельцем перед включением.**
+Если сначала завершить M6b, компромисс станет намного проще, а решение — очевидным.
+
+Изменения:
+
+1. `web/fins.js`, `buildFins()` — `const mode = opts.mode ?? 'stabilize'` заменить
+   на `?? 'prop'`.
+2. `web/app.js` — вариант по умолчанию и его название в переключателе режимов.
+   Подпорка сейчас помечена «экспериментально»; убрать пометку, а стабилизацию назвать
+   **Распорка** (её настоящая задача — не дать детали на ребре опрокинуться; для этого
+   и предназначено ребро Slant3D). Не удалять стабилизацию: её по-прежнему определяет
+   `docs/FIN-SPEC.md`, и она остаётся доступной.
+3. Текст пустого состояния в `explainNoFins()` уже читает собственные счётчики подпорок
    (`skipped.wanders` / `buried` / `blocked` / `stub` / `noLine` / `degenerate`).
-   Verify each string still names a stage that exists.
+   Проверить, что каждая строка всё ещё называет существующий этап.
 
-**Done when:** loading a dev model and exporting yields a vertical wall, and the
-mode selector calls the fin a Brace.
-
----
-
-## 4. M6b — coverage, in two steps
-
-The structural problem: **a connected overhang region is a topological artifact,
-not a support unit.** `analyze()` in `overhangs.js` union-finds adjacent
-overhang faces, which merges the entire tilted underside of
-`voron_drive_frame` into one 3,240 mm² region whose contact line sits **6.4 mm
-RMS off any straight axis**. One wall per region can never cover it. Two
-distinct failures follow, and they need different fixes.
-
-### M6b-1 — split regions into locally-straight sub-patches (do this first)
-
-Attacks the ~3 real empties, all rejected by `straightness() > PROP.maxWander`.
-
-**Do not loosen `maxWander`.** It is calibrated: servable ledges measure
-0.06–0.08, `hub_post_foot`'s ball-hub bowl — the case the gate exists for —
-measures 0.15–0.21. Loosening it re-admits walls that saw through the part.
-
-**Do not split the polyline.** `contactLine()` fits ONE principal axis to the
-whole region and buckets along it, so for an L-shaped or wrapped region the
-polyline is already wrong before you split it. Split the **faces**, then build
-one contact line per sub-patch.
-
-Implementation:
-
-- New function in `prop.js` (or a small `patches.js`), operating on
-  `region.faces` in print space: **region-grow from a seed face against the
-  seed's own plane**, admitting a face when its normal is within ~15° of the
-  seed normal. Grow from the largest unassigned face until none remain.
-- **Grow against the seed plane, never merge pairwise.** `planes.js` already
-  documents why: union-find over "adjacent faces whose normals agree within 12°"
-  *creeps* — a cylinder's faces each differ from the next by a few degrees, so
-  the whole cylinder merges into one "flat" patch. Region-growing cannot creep,
-  because the hundredth face is judged by the same plane as the first.
-- Drop sub-patches under `MIN_REGION_AREA` (12 mm², already in `overhangs.js`).
-- Run the existing pipeline unchanged per sub-patch: `contactLine` →
-  `straightness` → per-station `usable` → `longestRun` → `settleTop` → `sweep`
-  → `insidePart` confirmation.
-- `buildProps()` currently loops `for (const region of result.regions)`. It
-  becomes a loop over sub-patches. **`skipped` counters must stay per-reason and
-  survive to the UI** — that lossiness is exactly how M5 was recorded as working
-  on parts where it built nothing.
-
-**Done when:** `voron_filter_housing` @0 builds a wall under its 210 mm² ledge
-at z = 40.9 (currently `buried`), and the matrix has ≤4 empties — i.e. only the
-4 correct refusals in §1.
-
-### M6b-2 — parallel walls across a wide underside
-
-Attacks coverage on parts that *do* get a wall. `voron_drive_frame` @40 gets one
-correct wall covering 13–18% of a wide sloped plane; it needs several walls side
-by side.
-
-- For each sub-patch, compute its principal horizontal axis `u` and the
-  perpendicular `v` (the same 2×2 covariance already in `contactLine()` and
-  `buildPad()`).
-- Walls run **along `u`**, placed at `v = v₀ + k · maxUnsupportedSpan` for
-  integer `k` spanning the patch's `v` extent, centred so the outermost walls sit
-  ~½ span inside the edges.
-- Each wall's contact line = the underside sampled along `u` at that fixed `v`,
-  using `surfaceZAt()`. Then the *identical* per-wall pipeline as above —
-  `contourTop`, per-station `usable`, `longestRun`, `settleTop`, `sweep`,
-  `insidePart`. Do not special-case it.
-- **Expose `maxUnsupportedSpan` as one constant** shared by the generator and
-  `check_stl.py`'s `MAX_UNSUPPORTED_SPAN` (currently 12.0 mm, duplicated). The
-  checker and the generator must not be able to disagree about the dial.
-- Add a plastic-cost readout per part (sum of added solid volume). It is needed
-  for §6.
-
-**Done when:** matrix coverage ≥ 60% of overhang area with **zero** walls
-failing the flank or gap check, and `voron_drive_frame` @40 exceeds 80% on its
-own.
+**Готово, когда:** загрузка тестовой модели и экспорт дают вертикальную стенку,
+а переключатель режимов называет ребро распоркой.
 
 ---
 
-## 5. M7b — judgment and honesty
+## 4. M6b — покрытие в два шага
 
-- `maxUnsupportedSpan` becomes the **user-facing dial** (mm slider). It is the
-  one number that decides how many walls a part gets, and it is a physical
-  quantity a printer owner understands (how far their machine will bridge).
-- Plastic-cost readout: grams/cm³ of added support, shown next to the wall count.
-- Limitations panel, from data the code already produces: overhangs over the
-  part rather than the plate; features under the wall-height floor; bowl-shaped
-  overhangs with no line to sweep (`skipped.wanders`); parts balanced on a point
-  (`seatingOf().kind === 'point'`, already landed and already outranks every
-  mode-specific message).
-- Brace (the fin) offered as an explicit option for the toppling case.
+Структурная проблема: **связная область нависания — артефакт топологии, а не единица
+поддержки.** `analyze()` в `overhangs.js` объединяет соседние нависающие грани через
+union-find. Вся наклонённая нижняя поверхность `voron_drive_frame` становится одной
+областью 3,240 мм², линия контакта которой имеет **СКО 6.4 мм от любой прямой оси**.
+Одна стенка на область никогда не покроет её. Возникают две разные проблемы
+с разными решениями.
+
+### M6b-1 — разделить области на локально прямолинейные участки (сначала это)
+
+Устраняет ~3 настоящих пустых результата, отклонённых по `straightness() > PROP.maxWander`.
+
+**Не ослабляйте `maxWander`.** Порог откалиброван: у поддерживаемых выступов показатель
+0.06–0.08, у чаши шарового узла `hub_post_foot`, ради которой введена проверка, —
+0.15–0.21. Ослабление снова допустит стенки, прорезающие деталь.
+
+**Не делите ломаную.** `contactLine()` подбирает ОДНУ главную ось для всей области
+и разбивает точки вдоль неё, поэтому у L-образной или огибающей области ломаная неверна
+ещё до разбиения. Делите **грани**, затем стройте отдельную линию контакта для каждого участка.
+
+Реализация:
+
+- Новая функция в `prop.js` (или небольшом `patches.js`) работает с `region.faces`
+  в системе печати: **наращивание области от исходной грани относительно её собственной
+  плоскости**, с добавлением граней, нормали которых отклоняются от исходной примерно
+  на ~15°. Начинать с крупнейшей нераспределённой грани, пока такие грани не закончатся.
+- **Наращивать относительно исходной плоскости, никогда не объединять попарно.** `planes.js`
+  уже объясняет причину: union-find по «соседним граням с разницей нормалей до 12°»
+  *ползёт*: грани цилиндра отличаются от соседних на несколько градусов, и весь цилиндр
+  сливается в один «плоский» участок. Наращивание так не ползёт, потому что сотая грань
+  оценивается относительно той же плоскости, что первая.
+- Отбрасывать участки меньше `MIN_REGION_AREA` (12 мм², уже есть в `overhangs.js`).
+- Для каждого участка запускать существующие этапы без изменений: `contactLine` →
+  `straightness` → `usable` для каждого сечения → `longestRun` → `settleTop` → `sweep`
+  → подтверждение через `insidePart`.
+- `buildProps()` сейчас выполняет `for (const region of result.regions)`.
+  Заменить на цикл по участкам. **Счётчики `skipped` должны сохранять причины и доходить
+  до интерфейса**: именно потеря этих данных позволила записать M5 как работающий
+  на деталях, для которых он ничего не строил.
+
+**Готово, когда:** `voron_filter_housing` @0 строит стенку под выступом 210 мм²
+на z = 40.9 (сейчас `buried`), а в матрице ≤4 пустых результата — только
+4 правильных отказа из §1.
+
+### M6b-2 — параллельные стенки под широкой нижней поверхностью
+
+Улучшает покрытие деталей, которые *уже* получают стенку. `voron_drive_frame` @40
+получает одну правильную стенку с покрытием 13–18% широкой наклонной плоскости;
+нужны несколько стенок рядом.
+
+- Для каждого участка вычислить главную горизонтальную ось `u` и перпендикулярную `v`
+  (та же ковариационная матрица 2×2, что уже используется в `contactLine()` и `buildPad()`).
+- Стенки идут **вдоль `u`**, располагаясь при `v = v₀ + k · maxUnsupportedSpan`
+  для целых `k`, покрывающих диапазон участка по `v`; центрировать так, чтобы крайние
+  стенки отстояли от края внутрь примерно на ~½ пролёта.
+- Линия контакта каждой стенки — выборка нижней поверхности вдоль `u` при фиксированном
+  `v` через `surfaceZAt()`. Затем *те же* этапы стенки, что выше: `contourTop`,
+  `usable` для каждого сечения, `longestRun`, `settleTop`, `sweep`, `insidePart`.
+  Не вводить специальный случай.
+- **Сделать `maxUnsupportedSpan` одной общей константой** для генератора и
+  `MAX_UNSUPPORTED_SPAN` в `check_stl.py` (сейчас 12.0 мм, продублировано).
+  Проверка и генератор не должны по-разному понимать эту настройку.
+- Добавить показатель расхода пластика на деталь (сумму объёмов добавленных тел).
+  Он нужен для §6.
+
+**Готово, когда:** покрытие в матрице ≥ 60% площади нависаний при **нуле** стенок,
+не прошедших проверку бокового просвета или зазора, а `voron_drive_frame` @40
+сам по себе превышает 80%.
 
 ---
 
-## 6. The unverified claim — measure before it goes in a script
+## 5. M7b — оценка и честность
 
-**"Uses less plastic than slicer supports" has never been measured**, and it is
-the product's central claim. A 1.2 mm wall *should* win, but tipping a part on
-edge raises Z height and can eat the gain.
-
-Procedure: take 3 matrix cases that now produce clean walls, export each twice —
-once with walls and supports off, once bare with the slicer's own supports on —
-and compare filament used in PrusaSlicer. **If the walls lose, drop the claim.**
-The honest-limitations chapter is part of why this format works.
-
-The same run answers the "faster" claim (print time) at no extra cost.
+- `maxUnsupportedSpan` становится **настройкой пользователя** (ползунок в мм).
+  Это единственное число, определяющее количество стенок; физическая величина,
+  понятная владельцу принтера: какой мост способен напечатать его принтер.
+- Расход пластика: граммы/см³ добавленных поддержек рядом с числом стенок.
+- Панель ограничений на основе уже вычисляемых данных: нависания над деталью, а не столом;
+  элементы ниже минимальной высоты стенки; чашеобразные нависания без линии для протяжки
+  (`skipped.wanders`); детали на точечной опоре (`seatingOf().kind === 'point'`, уже
+  реализовано и имеет приоритет над всеми сообщениями отдельных режимов).
+- Распорка (ребро) предлагается явно для случаев риска опрокидывания.
 
 ---
 
-## 7. Suggested order
+## 6. Непроверенное утверждение — измерить до включения в сценарий
 
-1. **M6b-1** — biggest correctness win, contained, no product decision needed.
-2. **M6b-2** — the coverage number.
-3. **§6 measurement** — cheap once walls exist, and it gates the video script.
-4. **M5c** — ask the owner; trivially easy once coverage is respectable.
-5. **M7b**, then M8 (Draw + strength overlay) and M9 (chamfer, sample model,
-   Ko-fi, domain) per `docs/ROADMAP.md`.
+**«Меньше пластика, чем у поддержек слайсера» ещё ни разу не измерялось**, хотя это главное
+обещание продукта. Стенка 1.2 мм *должна* выиграть, но наклон детали на ребро увеличивает
+высоту Z и может съесть выигрыш.
 
-Re-run the full matrix and `check_stl.py` after every step. If a milestone
-reports better than it looks on screen, **suspect the scoreboard** — that has
-now happened twice on this project.
+Порядок: взять 3 случая матрицы, которые теперь дают правильные стенки, экспортировать
+каждый дважды — со стенками и выключенными поддержками, затем чистую деталь с поддержками
+слайсера — и сравнить расход пластика в PrusaSlicer. **Если стенки проигрывают, убрать
+утверждение.** Раздел честных ограничений — одна из причин, по которым такой формат работает.
+
+Тот же запуск без дополнительных затрат проверит утверждение «быстрее» по времени печати.
+
+---
+
+## 7. Рекомендуемый порядок
+
+1. **M6b-1** — наибольший выигрыш в корректности, локальная задача без продуктового решения.
+2. **M6b-2** — показатель покрытия.
+3. **Измерение из §6** — недорого после появления стенок; определяет допустимость обещания в видео.
+4. **M5c** — спросить владельца; просто, когда покрытие станет достойным.
+5. **M7b**, затем M8 (ручное размещение и визуализация прочности) и M9 (фаска, пример модели,
+   Ko-fi, домен) согласно `docs/ROADMAP.md`.
+
+После каждого шага заново запускать всю матрицу и `check_stl.py`. Если этап по отчёту
+выглядит лучше, чем на экране, **подозревайте систему оценки**: в этом проекте
+такое уже случалось дважды.

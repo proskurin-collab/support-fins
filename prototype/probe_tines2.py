@@ -89,8 +89,8 @@ def min_tines(mesh, line, big):
 
 
 def main(paths):
-    print(f"{'part':>26} {'reg':>4} {'stn':>4} {'tine<=1.5mm':>12} "
-          f"{'median tine':>12} {'median h':>9} {'side split':>12}")
+    print(f"{'деталь':>26} {'обл.':>4} {'точ.':>4} {'перем.<=1.5мм':>12} "
+          f"{'медиана перем.':>12} {'медиана h':>9} {'по сторонам':>12}")
     tot_st = tot_good = 0
     for path in paths:
         mesh = load(path)
@@ -98,7 +98,7 @@ def main(paths):
         regs = sorted(regions_of(mesh), key=lambda c: -mesh.area_faces[c].sum())[:3]
         name = path.split('/')[-1]
         if not regs:
-            print(f"{name:>26}    -    (no overhang regions)")
+            print(f"{name:>26}    -    (нет областей нависания)")
             continue
         for ri, r in enumerate(regs):
             line = contact_line(region_points(mesh, r))
@@ -107,7 +107,7 @@ def main(paths):
             res = min_tines(mesh, line, big)
             hit = [x for x in res if x is not None]
             if not hit:
-                print(f"{name:>26} {ri:>4} {len(res):>4}   (no tine reaches)")
+                print(f"{name:>26} {ri:>4} {len(res):>4}   (перемычки не достигают детали)")
                 continue
             lens = np.array([x[0] for x in hit])
             hs = np.array([x[2] for x in hit])
@@ -119,8 +119,8 @@ def main(paths):
                   f"{good:>5}/{len(res):<6} {np.median(lens):>11.2f} "
                   f"{np.median(hs):>9.2f} "
                   f"{f'{int((sides>0).sum())}+/{int((sides<0).sum())}-':>12}")
-    print(f"\nOVERALL: {tot_good}/{tot_st} stations "
-          f"({100*tot_good/max(1,tot_st):.0f}%) take a tine <= {GOOD_TINE}mm")
+    print(f"\nИТОГО: {tot_good}/{tot_st} точек "
+          f"({100*tot_good/max(1,tot_st):.0f}%) допускают перемычку <= {GOOD_TINE}мм")
 
 
 if __name__ == '__main__':

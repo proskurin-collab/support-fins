@@ -76,7 +76,7 @@ function pickObjects(objects) {
     const meta = document.createElement('span');
     meta.className = 'pk-meta';
     const s = o.bbox.size.map((v) => Math.round(v));
-    meta.textContent = `${o.tris.toLocaleString()} tris · ${s[0]}×${s[1]}×${s[2]} mm`;
+    meta.textContent = `${o.tris.toLocaleString()} треуг. · ${s[0]}×${s[1]}×${s[2]} мм`;
     label.append(cb, name, meta);
     li.append(label);
     list.append(li);
@@ -87,8 +87,8 @@ function pickObjects(objects) {
   function refresh() {
     const n = selected().length;
     loadBtn.disabled = n === 0;
-    loadBtn.textContent = n > 1 ? `Merge ${n} & load` : 'Load';
-    hint.textContent = n > 1 ? `${n} selected — merged into one part` : '';
+    loadBtn.textContent = n > 1 ? `Объединить ${n} и загрузить` : 'Загрузить';
+    hint.textContent = n > 1 ? `Выбрано: ${n} — будут объединены в одну деталь` : '';
   }
   refresh();
   modal.hidden = false;
@@ -141,13 +141,13 @@ async function parseModel(buffer) {
   const notes = [];
   if (objects.length > 1) {
     notes.push(chosen.length === 1
-      ? `imported “${chosen[0].name}” of ${objects.length} objects`
-      : `merged ${chosen.length} of ${objects.length} objects into one part`);
+      ? `импортирован объект «${chosen[0].name}»; всего объектов: ${objects.length}`
+      : `объединено в одну деталь: ${chosen.length} из ${objects.length} объектов`);
   } else if (chosen[0].meshes > 1) {
-    notes.push(`merged ${chosen[0].meshes} bodies into one part`);
+    notes.push(`объединено тел в одну деталь: ${chosen[0].meshes}`);
   }
-  if (skipped) notes.push(`ignored ${skipped} support/non-printable ${skipped === 1 ? 'body' : 'bodies'}`);
-  if (unit && unit !== 'millimeter') notes.push(`converted from ${unit} to mm`);
+  if (skipped) notes.push(`пропущено тел поддержек или непечатаемых тел: ${skipped}${skipped === 1 ? '' : ''}`);
+  if (unit && unit !== 'millimeter') notes.push(`единицы ${unit} переведены в мм`);
   importNote = notes.length ? `3MF: ${notes.join('; ')}.` : '';
 
   return geometry;
@@ -160,7 +160,7 @@ async function parseModel(buffer) {
 async function parseStep(buffer) {
   const spinner = el('spinner');
   const label = spinner.lastChild.textContent;
-  spinner.lastChild.textContent = 'reading STEP…';
+  spinner.lastChild.textContent = 'чтение STEP…';
   spinner.classList.add('show');
   let objects;
   try {
@@ -175,11 +175,11 @@ async function parseStep(buffer) {
     chosen = await pickObjects(objects);
     if (!chosen) return null;
   }
-  const notes = ['tessellated at 0.01 mm'];
+  const notes = ['триангуляция с точностью 0.01 мм'];
   if (objects.length > 1) {
     notes.unshift(chosen.length === 1
-      ? `imported “${chosen[0].name}” of ${objects.length} objects`
-      : `merged ${chosen.length} of ${objects.length} objects into one part`);
+      ? `импортирован объект «${chosen[0].name}»; всего объектов: ${objects.length}`
+      : `объединено в одну деталь: ${chosen.length} из ${objects.length} объектов`);
   }
   importNote = `STEP: ${notes.join('; ')}.`;
   return geometryFromPositions(mergeObjectPositions(chosen));
@@ -192,7 +192,7 @@ async function loadFile(file) {
     if (geometry) setPart(geometry, file.name);
   } catch (err) {
     console.error(err);
-    alert(`Could not read ${file.name}:\n${err.message}`);
+    alert(`Не удалось прочитать ${file.name}:\n${err.message}`);
   }
 }
 

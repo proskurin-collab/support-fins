@@ -213,10 +213,10 @@ function pickSupport(ev) {
 export function selectedNote() {
   const i = selectedWall.info ?? {};
   const what = selectedWall.kind === 'sway'
-    ? `sway brace ${Math.round(i.height ?? 0)}mm tall`
-    : `wall ${Math.round(i.length ?? 0)}mm long`;
-  return `selected: ${what}${i.tines ? `, ${i.tines} tines` : ''}. Press Delete or `
-    + 'Remove selected to take it out (Esc to keep it)';
+    ? `стабилизирующая распорка высотой ${Math.round(i.height ?? 0)} мм`
+    : `стенка длиной ${Math.round(i.length ?? 0)} мм`;
+  return `выбрано: ${what}${i.tines ? `, соединительных перемычек: ${i.tines}` : ''}. Нажмите Delete или `
+    + '«Удалить выбранное» для удаления (Esc — оставить)';
 }
 
 export function selectWall(w) {
@@ -276,7 +276,7 @@ function placeSecondPoint(hitPoint) {
   const r = drawnWall([aWorld.x, aWorld.y, aWorld.z],
                       [bWorld.x, bWorld.y, bWorld.z], tris, 0);
   if (!r.ok) {
-    drawMsg = `couldn’t place that wall: ${r.reason}`;
+    drawMsg = `не удалось разместить стенку: ${r.reason}`;
     clearPreview();
     updateReadout(lastBuilt);
     return;
@@ -325,7 +325,7 @@ function placeSway(hit) {
                        [hit.point.x, hit.point.y, hit.point.z], swayOpts(),
                        { braces: standing, walls: auto.walls });
   if (!r.ok) {
-    drawMsg = `couldn’t place that brace: ${r.reason}`;
+    drawMsg = `не удалось разместить распорку: ${r.reason}`;
     updateReadout(lastBuilt);
     return;
   }
@@ -343,12 +343,12 @@ function placeSway(hit) {
  *  wall in the Suggest "+ Add" augment. */
 export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
-  el('draw-hint').innerHTML = 'Click <strong>two points</strong> across an overhang '
-    + '— straight onto the red faces — to lay a breakaway wall along that line. '
+  el('draw-hint').innerHTML = 'Укажите <strong>две точки</strong> поперёк нависания '
+    + 'прямо на красных гранях, чтобы разместить отламываемую стенку вдоль этой линии. '
     + (el('sway').checked
-      ? 'Click an <strong>upright side</strong> once to stand a sway brace against it. '
+      ? 'Нажмите один раз на <strong>вертикальную сторону</strong>, чтобы поставить стабилизирующую распорку. '
       : '')
-    + '<kbd>Esc</kbd> or right-click cancels.';
+    + '<kbd>Esc</kbd> или правая кнопка мыши — отмена.';
 }
 
 // Undo/Clear act on the hand-drawn breakaway walls -- the thing both Draw and the

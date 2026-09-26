@@ -1,133 +1,142 @@
-# Support-engine tests
+# Тесты движка поддержек
 
-Fast, offline invariant tests for the geometry the tool bakes into an STL. Pure
-geometry in, triangle soup out -- so every test builds something and asserts a
-property no future change may quietly break.
+Быстрые автономные тесты инвариантов геометрии, которую приложение записывает в STL.
+На входе — геометрия, на выходе — набор треугольников: каждый тест строит объект
+и проверяет свойство, которое будущие изменения не должны незаметно нарушать.
 
 ```sh
 deno test --allow-read tests/
 ```
 
-## What's pinned (and why it exists)
+## Что зафиксировано и зачем
 
-Each of these is a regression that actually shipped once. The tests are the
-fence around it.
+Каждая из этих регрессий уже попадала в выпущенную версию. Тесты защищают от их повторения.
 
-**`tines.test.js`** -- `emitTines` on a controlled solid block:
-- teeth **point INTO the part**, flush with the wall's flanks -- never standing
-  proud as sideways tabs "laying on" the surface;
-- teeth are **thin horizontal bridges** (one layer line), never tall dropped towers;
-- on a wall along a leaning face's **level contour**, teeth still **bite into the
-  face** -- the bite heading comes from the part (nearest-face inward normal), not
-  the wall's run. This one shipped broken: the bite was taken from the run tangent,
-  which only lands right when the wall happens to run up the slope, so tines on a
-  contour-following wall lay FLAT. The earlier "point INTO the part" test missed it
-  because its block put the run tangent *into* the part by construction;
-- an overhang a tooth cannot reach into gets **no tine** (no gripping air).
+**`tines.test.js`** — `emitTines` на контрольном сплошном блоке:
+- соединительные перемычки **направлены ВНУТРЬ детали**, заподлицо с боками стенки,
+  а не выступают в стороны, «лежа» на поверхности;
+- перемычки — **тонкие горизонтальные мостики** высотой в один слой, а не высокие башни;
+- на стенке вдоль **горизонтального контура** наклонной грани перемычки всё равно
+  **входят в грань**: направление контакта определяется деталью (внутренняя нормаль
+  ближайшей грани), а не направлением стенки. Эта ошибка уже попадала в выпуск:
+  использовалась касательная к линии стенки, которая подходит лишь при движении
+  вверх по склону, поэтому перемычки вдоль горизонтального контура лежали ПЛОСКО.
+  Прежний тест направления внутрь детали этого не заметил: его блок изначально
+  направлял касательную внутрь детали;
+- если перемычка не может достать до нависания, она **не создаётся**: контакта с воздухом нет.
 
-**`supports.test.js`** -- `buildFins` on the stress models, tilted so they place fins:
-- the fin **wall never fuses into the STL** (it clears the part by the breakaway
-  gap; only tines bite in);
-- fin feet **fuse into the bed pad** and reach the plate -- a wall lifted off its
-  pad is unsupported;
-- added geometry is **watertight**;
-- a tilted part gets a **tined, gripping** fin.
+**`supports.test.js`** — `buildFins` на моделях стресс-теста, наклонённых для создания рёбер:
+- **стенка ребра не сплавляется с STL**: от детали её отделяет зазор для отламывания,
+  внутрь входят только соединительные перемычки;
+- основания рёбер **соединяются с опорной площадкой** и доходят до печатного стола:
+  стенка, приподнятая над площадкой, остаётся без опоры;
+- добавленная геометрия **герметична**;
+- наклонённая деталь получает ребро **с перемычками, удерживающими деталь**.
 
-**`pad.test.js`** -- the bed pad styles (FIN-SPEC "Bed pad styles"):
-- **Sure hold** is a smooth oval that conforms under a tilted part's flank, stays
-  watertight, and thins into a gap on PETG numbers;
-- **Light** is the default, **one layer** thick at any layer height, and its
-  SLICED first-layer gap (pad vs part sections at mid-height) is > 0.1 mm -- past
-  the slicers' 0.098 mm closing -- at X30, X40 and X45, while staying within about
-  a bead of the part (a brim, not a moat). At 0.1 mm it welded shut at X40;
-- **Custom**'s thickness, spread and grip all reach the geometry;
-- **Auto** (the default) is **Sure hold on a small foot** (cone tip, sphere,
-  cylinder on its rim) and Light elsewhere -- an explicit Light or Custom is never
-  swapped -- and the swapped pad meets the part even on PETG numbers;
-- a **wedge foot** never runs under the part it braces (fails on the old foot,
-  which crossed a cube's edge).
+**`pad.test.js`** — стили опорной площадки (раздел о стилях площадки в FIN-SPEC):
+- **Надёжная фиксация** — гладкий овал, который повторяет форму под боком наклонённой
+  детали, остаётся герметичным и при параметрах PETG сужается до зазора;
+- **Лёгкая** — исходный вариант толщиной **в один слой** при любой высоте слоя.
+  Зазор первого слоя ПОСЛЕ НАРЕЗКИ (сечения площадки и детали на середине высоты)
+  превышает 0.1 мм при X30, X40 и X45, обходя порог замыкания слайсеров 0.098 мм,
+  но остаётся примерно в пределах ширины линии от детали: кайма, а не ров.
+  При 0.1 мм зазор замыкался при X40;
+- толщина, расширение и сцепление в режиме **Свои настройки** влияют на геометрию;
+- **Автоматически** (по умолчанию) выбирает **Надёжную фиксацию для малой опоры**
+  (вершина конуса, сфера, цилиндр на ободе), а в остальных случаях — Лёгкую.
+  Явно выбранные Лёгкая и Свои настройки не подменяются. Автоматически заменённая
+  площадка касается детали даже при параметрах PETG;
+- **клиновидное основание** не заходит под деталь, которую поддерживает: старое
+  основание пересекало край куба и не проходило этот тест.
 
-**`orient.test.js`** -- the orientation/strength logic behind the left rail (pure,
-no DOM), so a change to a verdict or a solver can't silently drift:
-- **`layerVerdict`** buckets a pose's posture -- tall = weak, flat = strong, on its
-  side = mixed -- and now returns **posture only** (the always-on text note was
-  dropped; this locks that so a future edit can't quietly re-add it);
-- **`loadAlignment`** reads a pull as good/mixed/poor from how much of it crosses
-  the layers, with the good/mixed cut pinned at 60deg off in-plane;
-- **`suggestOrientations`** turns a part saved tilted (a baked-in overhang) back to
-  its support-free flat pose and ranks it first, best-first and well-formed;
-- **`suggestStrengthPose`** lays an axial pull into the layer plane on a *seated*
-  pose (never the needle-tower), and declines to turn an already in-plane load.
+**`orient.test.js`** — логика ориентации и прочности левой панели (чистые функции
+без DOM), чтобы изменения оценки или решателя не приводили к незаметным отклонениям:
+- **`layerVerdict`** классифицирует положение: высокое — слабое, плоское — прочное,
+  на боку — смешанное. Теперь возвращает **только положение**: постоянная текстовая
+  подсказка удалена, и тест не позволяет незаметно вернуть её;
+- **`loadAlignment`** оценивает растяжение как good/mixed/poor по доле нагрузки
+  поперёк слоёв; граница good/mixed зафиксирована на 60° от плоскости слоя;
+- **`suggestOrientations`** возвращает сохранённую под наклоном деталь (с нависанием
+  в исходной геометрии) в плоское положение без поддержек и ставит его первым;
+  результаты корректны и упорядочены от лучших;
+- **`suggestStrengthPose`** направляет осевое растяжение вдоль слоёв в положении
+  **с опорой на стол** (без башни на игле) и не поворачивает уже лежащую в плоскости нагрузку.
 
-**`cutout.test.js`** -- wall cutouts (issue #34), holes through tall breakaway walls
-(diamond / triangle / arch one per cell, and the staggered lattice):
-- every piece is a **closed, outward-wound** solid (the slicer unions them);
-- the cut wall **never reaches outside** the solid wall it replaces, and removes
-  real material (mid-plane sampled, winding number so overlapping pieces count once);
-- the **contact top, foot and end posts stay solid**;
-- **no hole roof is flatter than 45deg** -- nothing bridges open air (checked by
-  loosening `CUT.slope`: the arch then fails);
-- pattern off, or a wall too short for a hole, is **byte-identical** to before;
-- on a **sloped** fin (a tipped cube's underside) the lattice **climbs the slope**
-  (>30% removed; the first per-cell version cut ~one hole there) and still never bridges;
-- on **real parts** (stress models, Auto) no pattern leaves the support open or makes
-  it **heavier** than solid -- a wall where only a speck of a hole fits stays solid;
-- a **part-standing** wall cuts too, and the pick reaches an **Auto** build through
-  `opts.tunables` (the Worker has its own copy of `cutout.js`).
+**`cutout.test.js`** — отверстия в стенках (задача #34): ромб, треугольник или арка
+в каждой ячейке высокой отламываемой стенки, а также решётка со смещением:
+- каждая часть — **замкнутое тело с наружным обходом граней** (слайсер объединяет их);
+- стенка с отверстиями **не выходит за пределы** исходной сплошной стенки и действительно
+  уменьшает расход материала: проверка на средней плоскости с числом обходов,
+  чтобы перекрывающиеся части учитывались один раз;
+- **контактный верх, основание и крайние стойки остаются сплошными**;
+- **крыша отверстия не бывает положе 45°**: ничто не перекрывает пустое пространство
+  мостом (проверяется ослаблением `CUT.slope`, после чего арка не проходит тест);
+- при выключенном рисунке или слишком короткой стенке результат **побайтно совпадает** с прежним;
+- на **наклонном** ребре (нижняя сторона повёрнутого куба) решётка **поднимается по склону**:
+  удаляется >30% материала, тогда как первая версия по ячейкам вырезала там примерно одно
+  отверстие; мостов по-прежнему нет;
+- на **реальных деталях** (модели стресс-теста, Автоматически) рисунок не оставляет
+  поддержку незамкнутой и не делает её **тяжелее** сплошной; стенка, куда помещается
+  лишь крошечный фрагмент отверстия, остаётся сплошной;
+- стенка, **стоящая на детали**, тоже получает отверстия, а настройка передаётся
+  в сборку **Автоматически** через `opts.tunables` (у Worker своя копия `cutout.js`).
 
-**`threemf.test.js`** -- the 3MF container, both directions (the only tests here
-that aren't fin geometry, because the file format is equally part of the product):
-- our own export **round-trips** back to the same geometry, both bodies intact
-  through the `<components>` assembly;
-- the declared **unit** is honoured (inch/cm/m/micron -> mm) -- 3MF states its
-  units, and ignoring that is the "imported at 1/25 scale" bug on the way IN;
-- `<build><item>` and `<component>` **transforms compose** -- a reader that keeps
-  only one imports the part offset from the plate;
-- **DEFLATE** entries read, which matters because every real exporter compresses
-  and our writer only ever emits STORE, so the round-trip test alone would miss it;
-- **ZIP64** archives read, in both the "sizes and offset overflowed" and
-  "offset only" shapes (the ZIP64 extra field holds only the fields that actually
-  overflowed, in a fixed order, so a reader that assumes all three mis-parses the
-  second). This one shipped broken: ZIP64 was refused outright on the assumption
-  that no 3MF would use it, and a real user file did -- writers enable it for
-  reasons of their own, not only past the 4GB limit. Unresolvable placeholders
-  still fail loudly;
-- **support/non-printable bodies** stay out of the part geometry (leftover support
-  in a plate would otherwise poison the overhang analysis);
-- the **production extension** reads: Bambu/Orca/MakerWorld put each object in its
-  own part (`3D/Objects/object_N.model`) referenced by `<component p:path="...">`,
-  and a root-only reader throws on these -- which is most real multi-object files;
-- object ids are **scoped per part file**: two parts legally reuse `id="1"`, so a
-  single global id->object map (three.js's `ThreeMFLoader`) silently assembles the
-  wrong geometry on a clash -- the test pins that the two survive as distinct edge
-  lengths (this is issue #14's second, quieter half);
-- a plate's objects come back **separately and named** (from
-  `Metadata/model_settings.config`) so the caller can let the user pick which to
-  fin, rather than merging a plate of distinct models into one soup;
-- a broken file **fails loudly**: a triangle indexing a missing vertex drops that
-  face alone (dropping a partial one would shear the rest of the mesh), and a
-  non-ZIP or mesh-free package throws rather than opening blank.
+**`threemf.test.js`** — контейнер 3MF в обоих направлениях. Это единственные тесты
+не геометрии рёбер: формат файла — такая же часть продукта:
+- собственный экспорт **импортируется обратно** с той же геометрией, оба тела
+  сохраняются при сборке через `<components>`;
+- объявленная **единица измерения** учитывается (inch/cm/m/micron → mm): её
+  игнорирование в 3MF вызывает ошибку масштаба 1/25 при импорте;
+- **преобразования** `<build><item>` и `<component>` **компонуются**: применение
+  лишь одного из них смещает импортированную деталь относительно стола;
+- записи **DEFLATE** читаются: реальные экспортёры сжимают данные, а наш записывает
+  только STORE, поэтому одного теста обратного импорта недостаточно;
+- архивы **ZIP64** читаются и при переполнении размеров со смещением, и при
+  переполнении только смещения. Дополнительное поле ZIP64 содержит лишь реально
+  переполненные поля в фиксированном порядке: ожидание всех трёх ломает второй
+  вариант. Эта ошибка уже попадала в выпуск: ZIP64 полностью отвергался, поскольку
+  предполагалось, что в 3MF его не будет, но реальный пользовательский файл его
+  содержал. Экспортёры включают его не только после превышения 4 ГБ.
+  Неразрешимые значения-заглушки по-прежнему вызывают явную ошибку;
+- **тела поддержек и непечатаемые тела** исключаются из геометрии детали, иначе
+  оставшиеся на столе поддержки искажают анализ нависаний;
+- **production extension** читается: Bambu/Orca/MakerWorld помещают каждый объект
+  в отдельную часть (`3D/Objects/object_N.model`) со ссылкой `<component p:path="...">`.
+  Чтение только корня даёт ошибку для большинства реальных файлов с несколькими объектами;
+- идентификаторы объектов **локальны для файла части**: две части вправе использовать
+  `id="1"`. Единая глобальная карта id→объект (как в `ThreeMFLoader` из three.js)
+  при совпадении незаметно собирает неверную геометрию. Тест проверяет, что разные
+  длины рёбер сохраняются: это вторая, менее заметная часть задачи #14;
+- объекты стола возвращаются **раздельно и с именами** из `Metadata/model_settings.config`,
+  чтобы пользователь мог выбрать деталь для поддержек, а не объединять все модели в одну;
+- повреждённый файл **вызывает явную ошибку**: треугольник со ссылкой на отсутствующую
+  вершину удаляется целиком (частичное удаление сдвинуло бы остальную сетку).
+  Пакет без ZIP или без сетки вызывает исключение, а не открывается пустым.
 
-**`step.test.js`** -- STEP import through the real vendored OpenCascade WASM (the
-same `stepObjects()` the app's worker output goes through):
-- a STEP is recognised by its **content** (the `ISO-10303-21;` magic), not its name;
-- a one-body file imports at the right **size and volume** and as a **closed** solid
-  (a missing or inside-out face shows up as a volume error, not just a bbox one);
-- curved faces are **finely faceted** (an 8 mm bore gets 60+ sides) -- these
-  triangles are what gets printed, so coarse tessellation is a quality bug;
-- several bodies come back as several **pickable objects**, named from the file;
-- a kernel failure or garbage file **throws**, never opens a blank part;
-- the imported part runs through `analyze` + `buildFins` and gets a fin.
-Fixtures (`tests/fixtures/*.step`) are made with FreeCAD.
+**`step.test.js`** — импорт STEP через включённый в проект OpenCascade WASM
+(тот же `stepObjects()`, который обрабатывает результат рабочего потока приложения):
+- STEP распознаётся по **содержимому** (сигнатура `ISO-10303-21;`), а не имени;
+- файл с одним телом импортируется с правильными **размерами и объёмом**, как
+  **замкнутое** тело: пропущенная или вывернутая грань видна как ошибка объёма,
+  а не только габаритов;
+- криволинейные грани **подробно триангулируются**: у отверстия 8 мм более 60 сторон.
+  Эти треугольники попадут на печать, поэтому грубая триангуляция — ошибка качества;
+- несколько тел возвращаются как несколько **доступных для выбора объектов** с именами из файла;
+- сбой ядра или повреждённый файл **вызывает исключение**, а не открывает пустую деталь;
+- импортированная деталь проходит `analyze` + `buildFins` и получает ребро.
+Тестовые файлы (`tests/fixtures/*.step`) созданы в FreeCAD.
 
-**`sway.test.js`** -- sway braces (`web/sway.js`) on a 150 mm post (plain blocks,
-no stress models needed):
-- a tall part gets braces, watertight, and the **rib never fuses** into the part;
-- every tine is **one layer**, on the layer grid, and bites into solid;
-- tines run **all the way up at even spacing**, and "grip from" keeps them off below it;
-- a short part gets none **and says why**; Draw's one-click brace works on a side and
-  refuses a roof; `buildFins` without the option is unchanged;
-- a brace straight across a channel from another is **refused**, a staggered one is not.
+**`sway.test.js`** — стабилизирующие распорки (`web/sway.js`) на стойке высотой 150 мм
+(простые блоки, без моделей стресс-теста):
+- высокая деталь получает герметичные распорки, и **ребро не сплавляется** с деталью;
+- каждая перемычка имеет высоту **в один слой**, стоит на сетке слоёв и входит в тело;
+- перемычки идут **по всей высоте с равномерным шагом**, а параметр начала крепления
+  исключает их ниже заданной высоты;
+- низкая деталь не получает распорок **с объяснением причины**. В режиме ручного
+  размещения распорка одним нажатием ставится на бок, но не на верхнюю грань.
+  Без этой настройки результат `buildFins` не меняется;
+- распорка точно напротив другой через канал **отклоняется**, а смещённая — нет.
 
-See `docs/FIN-SPEC.md` for the spec these encode. `prototype/stress/run.js` is the
-broader sweep (all models × poses) for eyeballing; this suite is the pass/fail gate.
+Спецификация этих проверок — в `docs/FIN-SPEC.md`. `prototype/stress/run.js`
+перебирает больше комбинаций моделей и ориентаций для визуальной оценки;
+этот набор тестов определяет прохождение проверки.

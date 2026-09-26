@@ -100,7 +100,7 @@ function requestShade() {
 
 function showDelta(axis, radians) {
   if (!axis || !radians) return;
-  const label = axis.length > 1 ? 'free' : axis;   // 'XYZE' / 'E' are screen-space
+  const label = axis.length > 1 ? 'свободно' : axis;   // 'XYZE' / 'E' are screen-space
   const deg = THREE.MathUtils.radToDeg(radians);
   el('rot-delta').textContent =
     `${label} ${deg >= 0 ? '+' : ''}${deg.toFixed(deg % 1 ? 1 : 0)}°`;
@@ -241,9 +241,9 @@ export function shade() {
 
   const dropped = res.rawRegionCount - res.regions.length;
   el('s-over').textContent = res.regions.length === 0
-    ? 'none'
-    : `${res.regions.length} region${res.regions.length === 1 ? '' : 's'}` +
-      (dropped ? ` (+${dropped} sliver${dropped === 1 ? '' : 's'})` : '');
+    ? 'нет'
+    : `Участков: ${res.regions.length}${res.regions.length === 1 ? '' : ''}` +
+      (dropped ? ` (мелких: +${dropped}${dropped === 1 ? '' : ''})` : '');
   el('s-over').classList.toggle('good', res.regions.length === 0);
 
   // Overhang warning (bottom-right card). The tool builds support for the big
@@ -254,14 +254,14 @@ export function shade() {
   // its piece via s-flat-note); the fix is almost always a better orientation.
   const warn = el('over-warn');
   if (res.regions.length > 0 && dropped > 0) {
-    warn.textContent = `⚠ ${dropped} small overhang${dropped === 1 ? '' : 's'} `
-      + `(hole ceilings, slots, bore tops) print unsupported this way up and may come `
-      + `out rough. Try Suggest orientation to point them up.`;
+    warn.textContent = `⚠ Мелких нависаний без поддержки: ${dropped}${dropped === 1 ? '' : ''}. `
+      + `В этой ориентации верхние поверхности отверстий и пазов могут получиться `
+      + `неровными. Нажмите «Подобрать ориентацию», чтобы направить их вверх.`;
   } else {
     warn.textContent = '';
   }
-  el('s-overarea').textContent = `${res.overArea.toFixed(0)} mm²`;
-  el('s-bed').textContent = `${res.bedArea.toFixed(0)} mm²`;
+  el('s-overarea').textContent = `${res.overArea.toFixed(0)} мм²`;
+  el('s-bed').textContent = `${res.bedArea.toFixed(0)} мм²`;
   el('s-bed').classList.toggle('warn', res.bedArea < 1);
 
   // "Do you even need me?" -- fire the honest signal before the user turns fins
@@ -269,11 +269,11 @@ export function shade() {
   // loaded, the overhangs on screen are self-inflicted by rotating.
   const flat = el('s-flat-note');
   if (res.regions.length === 0) {
-    flat.textContent = 'No supports needed this way up.';
+    flat.textContent = 'В этой ориентации поддержки не нужны.';
     flat.className = 'note good';
   } else if (flatRegions === 0) {
-    flat.textContent = 'This prints clean lying flat. You only need fins if you’re '
-      + 'tilting it for strength.';
+    flat.textContent = 'В исходном положении плашмя деталь печатается без поддержек. Рёбра нужны, только если вы '
+      + 'наклоняете её для повышения прочности.';
     flat.className = 'note';
   } else {
     flat.textContent = '';
@@ -282,7 +282,7 @@ export function shade() {
   // appends to this line, and the mode / bed-pad / toggle handlers call
   // refreshFins() WITHOUT going through shade(), so appending in place stacked
   // up "· fins 3 ms · fins 3 ms · fins 3 ms" with every toggle.
-  analysisTiming = `${ms.toFixed(0)} ms · weld ${weldMs.toFixed(0)} ms`;
+  analysisTiming = `${ms.toFixed(0)} мс · сшивка ${weldMs.toFixed(0)} мс`;
   el('s-time').textContent = analysisTiming;
 
   lastResult = res;
@@ -341,7 +341,7 @@ function report(filename, size) {
   el('s-name').textContent = filename;
   el('s-tris').textContent = (topology?.nFaces ?? 0).toLocaleString();
   el('s-bbox').textContent =
-    `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm`;
+    `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} мм`;
 
   lastSize = size;
   updateFit();
@@ -385,8 +385,8 @@ export function updateFit() {
   const over = dx > v.x || dy > v.y || dz > v.z;
   const fit = el('s-fit');
   fit.textContent = over
-    ? (added.length ? 'does not fit (with fins)' : 'does not fit')
-    : 'fits';
+    ? (added.length ? 'не помещается (с рёбрами)' : 'не помещается')
+    : 'помещается';
   fit.classList.toggle('warn', over);
 }
 
@@ -488,8 +488,8 @@ function cancelLay() {
 }
 
 function syncLayUI() {
-  el('lay-face').textContent = layPlacing ? 'Click a face to lay it flat — Esc cancels'
-    : 'Lay a face flat';
+  el('lay-face').textContent = layPlacing ? 'Выберите грань для укладки на стол — Esc отменяет'
+    : 'Уложить гранью на стол';
   el('lay-face').classList.toggle('active', layPlacing);
 }
 
@@ -704,7 +704,7 @@ function applyBuilt(built) {
 function markFinsStale() {
   for (const m of [finMesh, padMesh, drawnMesh]) if (m) m.material.opacity = 0.25;
   finMaterial.transparent = padMaterial.transparent = drawMaterial.transparent = true;
-  el('s-fins').textContent = 'generating supports…';
+  el('s-fins').textContent = 'создание поддержек…';
 }
 
 /** The "+ Add walls by hand" toggle, shown only in Suggest mode. */
@@ -712,7 +712,7 @@ export function syncAugmentUI() {
   const show = finsVisible && finMode === 'auto';
   el('augment-toggle').hidden = !show;
   el('augment-toggle').classList.toggle('primary', drawAugment);
-  el('augment-toggle').textContent = drawAugment ? 'Done adding walls' : '+ Add walls by hand';
+  el('augment-toggle').textContent = drawAugment ? 'Завершить добавление стенок' : '+ Добавить стенки вручную';
 }
 
 el('fin-mode').addEventListener('change', (e) => {
@@ -876,7 +876,7 @@ applyMaterial(el('material').value);   // sync density + tunables to the initial
  *  so undo/redo can re-sync it after restoring the flag. */
 export function syncFinsToggleUI() {
   el('fins-toggle').classList.toggle('primary', finsVisible);
-  el('fins-toggle').textContent = finsVisible ? 'Fins on' : 'Add fins';
+  el('fins-toggle').textContent = finsVisible ? 'Рёбра включены' : 'Добавить рёбра';
   el('fin-opts').hidden = !finsVisible;
   syncSectionSums();
 }
@@ -914,16 +914,16 @@ export function syncSectionSums() {
   el('sum-setup').textContent = `${sel('material')} · ${sel('fin-mode')}`;
   const grip = el('tine-density').valueAsNumber;
   el('sum-tines').textContent = el('tines').checked
-    ? `${grip <= 20 ? 'light' : grip >= 80 ? 'firm' : 'medium'} grip · ${el('layer-height').value} mm`
-    : 'off';
+    ? `${grip <= 20 ? 'слабая' : grip >= 80 ? 'сильная' : 'средняя'} фиксация · ${el('layer-height').value} мм`
+    : 'выкл.';
   el('sum-clearances').textContent =
-    `${el('gap').value} mm gap · pad ${el('bed-pad').selectedOptions[0].textContent.toLowerCase()}`;
+    `${el('gap').value} мм зазор · площадка ${el('bed-pad').selectedOptions[0].textContent.toLowerCase()}`;
   const cut = el('cutout').value;
-  el('sum-walls').textContent = cut === 'none' ? 'solid' : `${sel('cutout').toLowerCase()} cutouts`;
+  el('sum-walls').textContent = cut === 'none' ? 'сплошные' : `вырезы: ${sel('cutout').toLowerCase()}`;
   el('sum-sway').textContent = el('sway').checked
-    ? `${el('sway-spacing').value} mm tines · ${el('sway-depth').value}% deep`
-      + (el('sway-from').valueAsNumber > 0 ? ` · from ${el('sway-from').value} mm` : '')
-    : 'off';
+    ? `${el('sway-spacing').value} мм шаг перемычек · ${el('sway-depth').value}% глубина`
+      + (el('sway-from').valueAsNumber > 0 ? ` · от ${el('sway-from').value} мм` : '')
+    : 'выкл.';
 }
 el('fin-opts').addEventListener('input', syncSectionSums);
 el('fin-opts').addEventListener('change', syncSectionSums);
@@ -1174,7 +1174,7 @@ function tick(now) {
   sizeMarkers();
   renderer.render(scene, camera);
   if (++frames >= 20) {
-    fpsEl.textContent = `${Math.round((frames * 1000) / (now - last))} fps`;
+    fpsEl.textContent = `${Math.round((frames * 1000) / (now - last))} кадр/с`;
     frames = 0;
     last = now;
   }

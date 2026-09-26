@@ -197,4 +197,4 @@ for (const [name, pos] of models) {
 }
 globalThis.__TINECAP = undefined;
 Deno.writeTextFileSync(args.out, JSON.stringify(out));
-console.log(`${Object.keys(out).length} cases -> ${args.out}`);
+console.log(`Случаев: ${Object.keys(out).length} -> ${args.out}`);

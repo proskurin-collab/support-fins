@@ -1,7 +1,7 @@
 {
   "id": "com.printfins.support-fins",
   "name": "Support Fins",
-  "description": "Add a breakaway support fin (blade + tine comb) to the plate and position it under your overhang. The full auto tool lives at printfins.com.",
+  "description": "Добавьте на стол отламываемое ребро поддержки (стенка с соединительными перемычками) и расположите под нависанием. Полностью автоматический инструмент доступен на printfins.com.",
   "category": "Calibration",
   "license": "MIT",
   "min_slicer_version": "3.0.0",

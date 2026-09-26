@@ -1,9 +1,9 @@
-# Regression sweep — the pre-merge gate
+# Перебор регрессий — проверка перед слиянием
 
-Unit tests pin cases we already know about. This looks at **all** of them: it
-builds supports for every model × pose × coverage (31 models × 9 poses × 3 =
-837 cases) with the base engine and the branch, and reports every case where
-the branch supports **less**.
+Модульные тесты фиксируют уже известные случаи. Эта проверка охватывает **все**
+комбинации: строит поддержки для каждой модели × ориентации × плотности
+(31 модель × 9 ориентаций × 3 = 837 случаев) базовым движком и текущей веткой,
+затем сообщает обо всех случаях, где ветка поддерживает **меньше**.
 
 ```sh
 prototype/sweep/vs-base.sh                 # vs origin/main, incl. check_stl.py
@@ -13,34 +13,36 @@ CHECK_TIMEOUT=300 prototype/sweep/vs-base.sh   # per-case check_stl limit (defau
 KEEP=/some/dir prototype/sweep/vs-base.sh  # keep base/head JSON for digging
 ```
 
-Exit 1 on any blocking regression. **Rule: don't merge with an unexplained
-blocking line.** A deliberate trade (e.g. fewer walls on purpose) still shows up
-and gets explained in the PR.
+Код выхода 1 означает блокирующую регрессию. **Правило: не сливать ветку,
+пока есть необъяснённая блокирующая строка.** Намеренный компромисс (например,
+сознательное уменьшение числа стенок) тоже выводится и должен быть объяснён в PR.
 
-**Blocking** (compare.js): new crash · an overhang region goes unserved · wall
-length lost (>5mm and >5%) · tines lost (>3 and >5%) · lowest tine rises >0.1mm
-(base grip). Then **check_diff.py** runs `prototype/check_stl.py` on every
-changed case of both builds and blocks on a case that was clean and now fails
-(fused wall, open mesh, tine that misses, off-spec standoff), now builds
-nothing, or loses >2 points of overhang coverage.
+**Блокирующие изменения** (compare.js): новый сбой · область нависания без поддержки ·
+потеря длины стенок (>5 мм и >5%) · потеря перемычек (>3 и >5%) · подъём нижней
+перемычки >0.1 мм (крепление у основания). Затем **check_diff.py** запускает
+`prototype/check_stl.py` для каждого изменённого случая в обеих сборках и блокирует
+случаи, которые раньше проходили, а теперь не проходят (сплавленная стенка,
+незамкнутая сетка, перемычка без контакта, зазор вне спецификации), больше ничего
+не строят или теряют >2 процентных пунктов покрытия нависаний.
 
-**Info only:** wall count, squat walls, gains, plastic.
+**Только для сведения:** число стенок, низкие стенки, улучшения, расход пластика.
 
-Why it exists: on 2026-09-22 a fix that looked perfect on the 35° cube was
-found (by an ad-hoc version of this) to cost tines on most parts and drop
-walls on others — nothing the one-part check or the unit tests could see.
+Зачем это нужно: 2026-09-22 исправление, выглядевшее идеальным на кубе с наклоном
+35°, при таком пробном переборе оказалось причиной потери перемычек на большинстве
+деталей и исчезновения стенок на других. Проверка одной детали и модульные тесты
+этого не выявляли.
 
-Files: `sweep.js` (run one engine, optionally export STLs) · `compare.js`
-(diff two runs) · `check_diff.py` (check_stl on both exports) · `vs-base.sh`
-(all of it against a git ref, in a throwaway worktree).
+Файлы: `sweep.js` (запуск одного движка с необязательным экспортом STL) ·
+`compare.js` (сравнение двух запусков) · `check_diff.py` (check_stl для обоих
+экспортов) · `vs-base.sh` (всё перечисленное относительно ревизии git во временном worktree).
 
-`check_stl.py` checks every solid, so its cost scales with tine count (40mm
-cube ~1s; bigplate at dense ~200s). check_diff runs cases in parallel, one
-process each, with a per-case limit; a case that overruns is listed as **NOT
-checked** — never counted as a pass.
+`check_stl.py` проверяет каждое тело, поэтому затраты растут с числом перемычек:
+куб 40 мм — около 1 с, bigplate с высокой плотностью — около 200 с. check_diff
+обрабатывает случаи параллельно, по процессу на случай, с ограничением времени.
+Превысивший лимит случай помечается как **НЕ проверенный**, а не как успешный.
 
-**Memory:** each check loads the whole part into trimesh, so the pass runs 3 at
-a time (`CHECK_WORKERS`) and **skips bigplate + both voron parts by default** —
-8 parallel checks on those got the machine OOM-killed. The sweep itself still
-covers them. `CHECK_BIG=1` includes them; only do that on its own, not while
-you're working.
+**Память:** каждая проверка загружает всю деталь в trimesh, поэтому одновременно
+запускаются 3 процесса (`CHECK_WORKERS`), а **bigplate и обе детали voron по умолчанию
+пропускаются**. 8 параллельных проверок этих моделей приводили к нехватке памяти
+и принудительному завершению процессов. Сам перебор по-прежнему включает их.
+`CHECK_BIG=1` включает их проверки; запускайте отдельно от другой работы.

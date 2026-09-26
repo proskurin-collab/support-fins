@@ -92,15 +92,15 @@ def best_wall(mesh, cx, cy, z_top):
 
 
 def main(paths):
-    print(f"{'part':>26} {'reg':>4} {'z_top':>7} {'best dir':>9} "
-          f"{'wall R':>7} {'cover':>6} {'z-span':>7}  verdict")
+    print(f"{'деталь':>26} {'обл.':>4} {'z верха':>7} {'направл.':>9} "
+          f"{'R стенки':>7} {'покр.':>6} {'пролёт z':>7}  итог")
     tally = {'wall': 0, 'none': 0}
     for path in paths:
         mesh = load(path)
         name = path.split('/')[-1]
         regs = sorted(regions_of(mesh), key=lambda c: -mesh.area_faces[c].sum())[:3]
         if not regs:
-            print(f"{name:>26}    -   (no overhang regions)")
+            print(f"{name:>26}    -   (нет областей нависания)")
             continue
         for ri, r in enumerate(regs):
             pts = region_points(mesh, r)
@@ -112,18 +112,18 @@ def main(paths):
             best, hs = best_wall(mesh, cx, cy, z_top)
             if best is None:
                 print(f"{name:>26} {ri:>4} {z_top:7.1f}        -       -      -       -"
-                      "  NO vertical face")
+                      "  НЕТ вертикальной грани")
                 tally['none'] += 1
                 continue
             cover, rad, span, ang = best
             good = cover >= MIN_COVER and span >= 0.5 * z_top
             tally['wall' if good else 'none'] += 1
-            print(f"{name:>26} {ri:>4} {z_top:7.1f} {ang:8.0f}d {rad:7.2f} "
+            print(f"{name:>26} {ri:>4} {z_top:7.1f} {ang:8.0f}° {rad:7.2f} "
                   f"{cover:6.0%} {span:7.1f}  "
-                  f"{'FIN CAN STAND HERE' if good else 'too broken'}")
+                  f"{'МОЖНО ПОСТАВИТЬ РЕБРО' if good else 'слишком прерывистая поверхность'}")
     n = sum(tally.values())
-    print(f"\nOVERALL: {tally['wall']}/{n} regions have a vertical face a fin can "
-          f"stand against ({100*tally['wall']/max(1,n):.0f}%)")
+    print(f"\nИТОГО: {tally['wall']}/{n} областей имеют вертикальную грань для "
+          f"установки ребра ({100*tally['wall']/max(1,n):.0f}%)")
 
 
 if __name__ == '__main__':

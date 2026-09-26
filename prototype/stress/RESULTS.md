@@ -1,7 +1,7 @@
-# Combined-support stress test
+# Стресс-тест комбинированных поддержек
 
-21 shapes × 7 orientations = 147 cases, buildFins('auto', tines) on each.
-Regenerate: `python3 prototype/stress/gen.py && deno run --allow-read prototype/stress/run.js --verbose`
+21 форма × 7 ориентаций = 147 случаев, в каждом вызывается buildFins('auto', tines).
+Повторное создание: `python3 prototype/stress/gen.py && deno run --allow-read prototype/stress/run.js --verbose`
 
 ```
 shape       pose    flag  fins props tines ovh seat   stilt  g     note

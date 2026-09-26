@@ -57,6 +57,7 @@ async function settle() {
   for (let i = 0; i < 200; i++) {
     const busy = await page.evaluate(() =>
       document.getElementById('s-fins')?.textContent === 'generating supports…'
+      || document.getElementById('s-fins')?.textContent === 'создание поддержек…'
       || document.getElementById('spinner').classList.contains('show'));
     if (!busy) break;
     await sleep(100);
@@ -206,7 +207,7 @@ try {
   await page.goto(`${base}/?stl=${model}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__sf?.part, { timeout: 30000 });
   if (!(await page.evaluate(() => !!window.__sf.camera))) {
-    throw new Error('this build has no window.__sf.camera (the harness needs it to aim clicks)');
+    throw new Error('в этой сборке нет window.__sf.camera (тесту она нужна для наведения нажатий)');
   }
   await snap('loaded');
 
@@ -369,7 +370,7 @@ try {
   // row, then collapse and re-expand the results.
   const ranked = () => page.waitForFunction(() => {
     const b = document.getElementById('suggest-orient');
-    return !b.disabled && b.textContent === 'Suggest orientation';
+    return !b.disabled && (b.textContent === 'Suggest orientation' || b.textContent === 'Подобрать ориентацию');
   }, { timeout: 60000 });
   for (const m of ['tube', 'sphere', 'needle']) {
     await importFile(join(MODELS, `${m}.stl`), `${m}.stl`);

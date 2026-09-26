@@ -45,13 +45,13 @@ def main():
     js = bundle.read_text(encoding="utf-8")
     src = (HERE / "src" / "support_fins_orca.py").read_text(encoding="utf-8")
     if src.count(PLACEHOLDER) != 1:
-        sys.exit("placeholder for the engine bundle not found exactly once in src/support_fins_orca.py")
+        sys.exit("маркер сборки движка должен встречаться ровно один раз в src/support_fins_orca.py")
     # json.dumps yields a valid Python string literal (ASCII, escaped).
     out = src.replace(PLACEHOLDER, json.dumps(js))
     target = OUT / "support_fins_orca.py"
     target.write_text(out, encoding="utf-8")
-    print(f"built {target.relative_to(HERE.parent.parent)} "
-          f"({target.stat().st_size / 1024:.0f} KB, engine {len(js) / 1024:.0f} KB)")
+    print(f"собран {target.relative_to(HERE.parent.parent)} "
+          f"({target.stat().st_size / 1024:.0f} КБ, движок {len(js) / 1024:.0f} КБ)")
 
 
 if __name__ == "__main__":

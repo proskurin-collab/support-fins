@@ -29,7 +29,7 @@ const customRow = el('custom-vol');
 const customInputs = ['vx', 'vy', 'vz'].map(el);
 
 for (const v of VOLUMES) volumeSelect.add(new Option(volLabel(v), volLabel(v)));
-volumeSelect.add(new Option('Custom…', 'custom'));
+volumeSelect.add(new Option('Свои настройки…', 'custom'));
 
 let volume = { ...DEFAULT_VOLUME };
 try {

@@ -10,7 +10,7 @@ let n = 0;
 
 a.steps.forEach((s, i) => {
   const t = b.steps[i];
-  if (!t) { console.log(`missing step ${s.name}`); n++; return; }
+  if (!t) { console.log(`отсутствует шаг ${s.name}`); n++; return; }
   for (const k of Object.keys(s)) {
     if (JSON.stringify(s[k]) === JSON.stringify(t[k])) continue;
     n++;
@@ -23,11 +23,11 @@ a.steps.forEach((s, i) => {
   }
 });
 if (a.steps.length !== b.steps.length) {
-  console.log(`step count ${a.steps.length} → ${b.steps.length}`);
+  console.log(`число шагов ${a.steps.length} → ${b.steps.length}`);
   n++;
 }
-for (const e of b.errors) console.log(`head error: ${e}`);
+for (const e of b.errors) console.log(`ошибка текущей ветки: ${e}`);
 const bad = n + b.errors.length;
-console.log(bad ? `${b.model}: ${n} difference(s), ${b.errors.length} error(s)`
-                : `${b.model}: identical over ${b.steps.length} steps`);
+console.log(bad ? `${b.model}: различий: ${n}, ошибок: ${b.errors.length}`
+                : `${b.model}: совпадение на всех шагах (${b.steps.length})`);
 Deno.exit(bad ? 1 : 0);

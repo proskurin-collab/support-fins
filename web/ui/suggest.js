@@ -47,22 +47,22 @@ let suggestCurBore = 0;
 function noSupportVerdict(c) {
   if (c.regions === 0) {
     const rough = c.holes ?? 0;
-    const roughCaveat = rough ? ` One small spot may print a bit rough.` : '';
+    const roughCaveat = rough ? ` Небольшой участок может получиться шероховатым.` : '';
     // The suggester ranks for printability, not strength (it can't know the load).
     // If this pose also stands the part's long axis up the layers, that's the weak
     // print direction, so add a heads-up and point at the Strength arrow.
     const lv = c.size ? layerVerdict(c.size) : null;
     const strengthCaveat = lv?.posture === 'weak'
-      ? ` It prints tall, though, the weaker direction, so check the Strength arrow if it bears a load.`
+      ? ` Но деталь печатается в высоту, в менее прочном направлении: если она будет под нагрузкой, проверьте стрелку нагрузки.`
       : '';
-    return { tier: 'free', badge: 'No support',
-      note: `This way up it needs no fins, 0 g.${roughCaveat}${strengthCaveat}` };
+    return { tier: 'free', badge: 'Без поддержек',
+      note: `В этой ориентации рёбра не нужны, 0 г.${roughCaveat}${strengthCaveat}` };
   }
   if ((c.bore ?? 0) === 0 && suggestCurBore > 0) {
     const grams = (c.volume ?? 0) * materialDensity / 1000;
-    return { tier: 'holeclean', badge: 'Bores clean',
-      note: `This way up the bores point up, so no support sits inside a hole to scar it `
-          + `(${fmtGrams(grams)} g of fins, all on the outside).` };
+    return { tier: 'holeclean', badge: 'Чистые отверстия',
+      note: `В этой ориентации отверстия направлены вверх, поэтому внутри нет поддержек, оставляющих следы `
+          + `(${fmtGrams(grams)} г рёбер, все снаружи).` };
   }
   return null;
 }
@@ -74,12 +74,12 @@ function renderSuggestions() {
     const row = document.createElement('button');
     row.className = 'btn suggest-row';
     const point = c.seating === 'point';
-    const overs = c.walls === 0 ? 'no fins' : `${c.walls} fin${c.walls === 1 ? '' : 's'}`;
+    const overs = c.walls === 0 ? 'без рёбер' : `рёбер: ${c.walls}${c.walls === 1 ? '' : ''}`;
     // Rough holes = the small hole/slot/bore-top overhangs this pose leaves
     // unsupported (dropped slivers + bore-refused). Showing it is what makes a
     // hole-friendly pose legible: "Best · 12 rough" over "#3 · 561".
     const rough = (c.holes ?? 0) + (c.bore ?? 0);
-    const roughTxt = rough ? ` · ${rough} rough` : '';
+    const roughTxt = rough ? ` · шероховатых участков: ${rough}` : '';
     // A support-free pose is the headline outcome, not a footnote — badge it green
     // instead of letting it read as a dull "no overhangs → 0 fins".
     const verdict = point ? null : noSupportVerdict(c);
@@ -90,10 +90,10 @@ function renderSuggestions() {
     const badge = verdict?.tier === 'holeclean' ? ` <span class="sr-badge">${verdict.badge}</span>` : '';
     // One tight line per pose: rank · height · fins · rough holes. Bed area was
     // dropped to fit -- height already stands in for how it sits.
-    const tail = point ? ' · can’t print (on a point)' : roughTxt;
+    const tail = point ? ' · печать невозможна (опора на точку)' : roughTxt;
     row.innerHTML =
-      `<span class="sr-rank">${i === 0 ? 'Best' : `#${i + 1}`}</span>` +
-      `<span class="sr-line">${c.height.toFixed(0)} mm · ${overs}${tail}${badge}</span>`;
+      `<span class="sr-rank">${i === 0 ? 'Лучшая' : `#${i + 1}`}</span>` +
+      `<span class="sr-line">${c.height.toFixed(0)} мм · ${overs}${tail}${badge}</span>`;
     if (point) row.classList.add('bad');
     if (verdict?.tier === 'free') row.classList.add('free');
     row.addEventListener('click', () => {
@@ -131,7 +131,7 @@ export function clearSuggestionMark() {
 el('suggest-orient').addEventListener('click', () => {
   if (!part || !topology) return;
   const btn = el('suggest-orient');
-  btn.disabled = true; btn.textContent = 'Ranking…';
+  btn.disabled = true; btn.textContent = 'Подбор…';
   // let the button repaint before the (up to ~1s) solve blocks the thread
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try {
@@ -144,14 +144,14 @@ el('suggest-orient').addEventListener('click', () => {
       const tog = el('suggest-toggle');
       tog.hidden = false;
       tog.setAttribute('aria-expanded', 'true');
-      tog.setAttribute('aria-label', 'Collapse suggestions');
-      tog.title = 'Collapse';
+      tog.setAttribute('aria-label', 'Свернуть варианты');
+      tog.title = 'Свернуть';
       el('suggest-body').hidden = false;
       if (!candidates.length || confidence === 'none') {
         el('suggest-list').hidden = true;
         el('suggest-note').textContent = confidence === 'none'
-          ? 'No printable orientation: this part balances on a point at every angle.'
-          : 'Nothing to suggest for this part.';
+          ? 'Нет пригодной для печати ориентации: при любом повороте деталь опирается на точку.'
+          : 'Для этой детали нет подходящих вариантов.';
       } else {
         renderSuggestions();
         // Lead with the win when the best pose needs no support (or clears every
@@ -162,12 +162,12 @@ el('suggest-orient').addEventListener('click', () => {
           note.textContent = verdict.note;
           note.className = 'hint good';
         } else {
-          note.textContent = 'Click a pose to turn the part.';
+          note.textContent = 'Нажмите на вариант, чтобы повернуть деталь.';
           note.className = 'hint';
         }
       }
     } finally {
-      btn.disabled = false; btn.textContent = 'Suggest orientation';
+      btn.disabled = false; btn.textContent = 'Подобрать ориентацию';
     }
   }));
 });
@@ -178,7 +178,7 @@ el('suggest-toggle').addEventListener('click', () => {
   const open = tog.getAttribute('aria-expanded') !== 'false';
   const next = !open;
   tog.setAttribute('aria-expanded', String(next));
-  tog.setAttribute('aria-label', next ? 'Collapse suggestions' : 'Show suggestions');
-  tog.title = next ? 'Collapse' : 'Show';
+  tog.setAttribute('aria-label', next ? 'Свернуть варианты' : 'Показать варианты');
+  tog.title = next ? 'Свернуть' : 'Показать';
   el('suggest-body').hidden = !next;
 });

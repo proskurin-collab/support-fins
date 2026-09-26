@@ -21,8 +21,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 // state as text, so this points there.
 renderer.domElement.setAttribute('role', 'img');
 renderer.domElement.setAttribute(
-  'aria-label', 'Interactive 3D preview of the loaded part. Orientation and support '
-  + 'stats are reported as text in the panel on the left.');
+  'aria-label', 'Интерактивный 3D-просмотр загруженной детали. Ориентация и параметры поддержек '
+  + 'показаны текстом на панели слева.');
 viewport.appendChild(renderer.domElement);
 
 export const scene = new THREE.Scene();

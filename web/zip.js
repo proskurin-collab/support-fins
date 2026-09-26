@@ -137,7 +137,7 @@ function findEOCD(view) {
 // 64-bit ZIP fields are BigInt off a DataView; everything a 3MF uses is far
 // inside Number's exact-integer range, and the rest of this file is Numbers.
 function num(big) {
-  if (big > 9007199254740991n) throw new Error('ZIP entry is too large to read');
+  if (big > 9007199254740991n) throw new Error('элемент ZIP слишком велик для чтения');
   return Number(big);
 }
 
@@ -172,7 +172,7 @@ async function inflateRaw(bytes) {
 export async function unzip(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const eocd = findEOCD(view);
-  if (eocd < 0) throw new Error('not a ZIP archive (no end-of-central-directory record)');
+  if (eocd < 0) throw new Error('это не архив ZIP (нет записи конца центрального каталога)');
 
     let count = view.getUint16(eocd + 10, true);
   let o = view.getUint32(eocd + 16, true);
@@ -191,11 +191,11 @@ export async function unzip(bytes) {
   }
   // Placeholders with no ZIP64 record to resolve them: the archive is malformed
   // rather than merely large, and reading on would walk garbage offsets.
-  if (count === 0xffff || o === 0xffffffff) throw new Error('corrupt ZIP: ZIP64 markers with no ZIP64 record');
+  if (count === 0xffff || o === 0xffffffff) throw new Error('повреждённый ZIP: маркеры ZIP64 без записи ZIP64');
 
   const out = new Map();
   for (let i = 0; i < count; i++) {
-    if (view.getUint32(o, true) !== 0x02014b50) throw new Error('corrupt ZIP central directory');
+    if (view.getUint32(o, true) !== 0x02014b50) throw new Error('повреждён центральный каталог ZIP');
     const method = view.getUint16(o + 10, true);
     const nameLen = view.getUint16(o + 28, true);
     const extraLen = view.getUint16(o + 30, true);
@@ -212,7 +212,7 @@ export async function unzip(bytes) {
     const uncompPlaceheld = view.getUint32(o + 24, true) === 0xffffffff;
     if (uncompPlaceheld || compSize === 0xffffffff || localOff === 0xffffffff) {
       const z = findExtra(view, o + 46 + nameLen, extraLen, 0x0001);
-      if (z < 0) throw new Error(`corrupt ZIP: ${name} needs a ZIP64 extra field and has none`);
+      if (z < 0) throw new Error(`повреждённый ZIP: для ${name} отсутствует обязательное дополнительное поле ZIP64`);
       let f = z;
       if (uncompPlaceheld) f += 8;                                     // skip uncompressed size
       if (compSize === 0xffffffff) { compSize = num(view.getBigUint64(f, true)); f += 8; }
@@ -224,7 +224,7 @@ export async function unzip(bytes) {
 
     // The local header's own name/extra lengths give where the data starts --
     // the extra field routinely differs in length from the central one.
-    if (view.getUint32(localOff, true) !== 0x04034b50) throw new Error(`corrupt local header for ${name}`);
+    if (view.getUint32(localOff, true) !== 0x04034b50) throw new Error(`повреждён локальный заголовок ${name}`);
     const lNameLen = view.getUint16(localOff + 26, true);
     const lExtraLen = view.getUint16(localOff + 28, true);
     const start = localOff + 30 + lNameLen + lExtraLen;
@@ -232,7 +232,7 @@ export async function unzip(bytes) {
 
     if (method === 0) out.set(name, data);
     else if (method === 8) out.set(name, await inflateRaw(data));
-    else throw new Error(`unsupported ZIP compression method ${method} for ${name}`);
+    else throw new Error(`неподдерживаемый метод сжатия ZIP ${method} для ${name}`);
   }
   return out;
 }

@@ -1,762 +1,575 @@
-# Roadmap
+# План развития
 
-The loop the tool exists to serve:
+Рабочий цикл, ради которого существует инструмент:
 
-> **load an STL → rotate it into a stronger orientation → see what that broke →
-> add fins that fix it → export an STL that prints support-free anywhere.**
+> **загрузить STL → повернуть в более прочную ориентацию → увидеть возникшие проблемы →
+> добавить рёбра, которые их решают → экспортировать STL для печати где угодно без поддержек слайсера.**
 
-Everything below is judged against that sentence. If a feature doesn't move a user
-through it, it waits.
+Всё ниже оценивается по этой фразе. Если функция не продвигает пользователя
+по этому пути, она ждёт.
 
 ---
 
-## Constraints that shape every decision
+## Решения, принятые в ходе разработки
 
-| constraint | consequence |
+- **Порог нависания должен быть строгим, с эпсилон.** 45° — канонический угол проектируемой фаски. Реальные детали содержат тысячи граней ровно на границе, а грань ровно на пороге самонесущая. Усечённая константа `0.7071` в Python-пробе была на 7.6e-6 мягче `cos(45°)` и незаметно включала каждую 45°-фаску: на одной детали Voron это 45 дополнительных граней и **318 мм², завышение в 2.1×**. Обе стороны используют `cos(threshold) + 1e-4` и `nz` в float64. Это та же ошибка, что и «6 рёбер на детали, которой не нужно ни одного»: **оценка начинается со сравнения порога.**
+- **Браузер и Python должны численно совпадать, и это проверяется.** `web/overhangs.js` повторяет `prototype/spike_overhangs.py` константа в константу; `window.__sf` открывает топологию и анализатор, чтобы сравнивать их на одном файле.
+- **Освещение — требование читаемости, а не украшение.** Нависания находятся снизу, поэтому пользователь обычно смотрит на деталь снизу вверх. Обычный свет сверху оставляет именно нужные грани в темноте.
+- **Поворот недорог, поскольку сшивка не зависит от поворота.** Поворот не меняет соприкасающиеся треугольники, поэтому повторно выполняется только линейная классификация (1–6 мс), а не сшивка (28–119 мс). Это позволяет обновлять показатели во время перетаскивания.
+- **Ориентация задаётся преобразованием и не запекается в геометрию.** Сетка остаётся в исходной системе координат, анализ принимает матрицу поворота, поэтому ошибки float не накапливаются за сотни поворотов, а исходный файл всегда доступен.
+- ~~**Ребро наклоняется вместе с деталью.**~~ **ОТМЕНЕНО 2026-07-26 — стенки всегда вертикальны.** Наклон 45° у тонкой стенки сам создаёт нависание; стенка 1.2 мм при 40° выгибается вбок вместо передачи нагрузки сжатием. Измерено: 7 из 16 рёбер наклонены на 25–40°, одно — стенка 147 мм на свободной стойке 12.6 мм. **Правильный ответ для наклонной грани — вертикальная стенка с контурной верхней кромкой**, как в `breakaway.py`; тогда грань не обязана быть плоской или вертикальной.
+- **Плоские участки надо растить от исходной плоскости, а не объединять попарно.** Union-find соседних граней с нормалями в пределах 12° «расползается»: грани цилиндрического выступа различаются на несколько градусов, и весь цилиндр становится одним «плоским» участком. Рост относительно плоскости исходной грани не расползается: сотая грань оценивается по той же плоскости, что первая.
+- **Проверка запускается headless в `deno`.** `overhangs.js`, `planes.js` и `fins.js` не импортируют three.js, поэтому `prototype/verify_fins.js` запускает поставляемые модули на реальных STL и передаёт результат trimesh. Это только проверка разработки; она сразу нашла ошибку взвешивания площади, помещавшую каждую плоскость в d/3.
+- **Плоской стенке не нужна плоская деталь.** Симметричное требование плоскости ограничивало захват одной гранью круглой поверхности: на `hub_post_foot` при 70° лучшее сцепление было 0.86 мм. Теперь поверхность не может выпирать к ребру, но может отступать до 1.2 мм; каждая перемычка измеряет собственный зазор. Предел отступа — 1.5 мм неподдержанного пролёта перемычки, установленный `prototype/probe_tines2.py`.
+- **Дешёвый поиск, точное подтверждение.** Сначала быстрый приблизительный поиск, затем точная проверка готовой геометрии. Стенка проходит проверку содержания (`inside.js`), готовое ребро — проверку зазора к фактически занимаемому объёму, а каждая перемычка подтверждается перед добавлением.
+- **Рёбра перестраиваются после окончания перетаскивания, а не во время.** Подтверждающие проходы занимают ~100 мс на детали с 43 тыс. граней: хорошо один раз, плохо при 60 кадрах/с. Подсветка нависаний по-прежнему обновляется за 1–6 мс, а устаревшие рёбра сереют.
+- **Локальный сервер должен отключать кэш** (`dev-server.py`). `python3 -m http.server` не задаёт `Cache-Control`; браузеры могут кэшировать ES-модули и после правки запускать старый код.
+
+## Состояние M4 (2026-07-26)
+
+**Геометрия и выбор мест готовы, проверены и нарезаны.** `prototype/verify_fins.js` строит, `prototype/check_stl.py` проверяет; оба запускаются на трёх моделях при 0/25/40°. **9/9 случаев чистые**: каждое добавленное тело замкнуто и имеет положительный объём; ни одна вершина стенки или основания не внутри детали; каждая перемычка соединена с деталью и своей стенкой; измеренный зазор 0.200–0.233 мм при спецификации 0.2 мм.
+
+**Результат проверен в реальном слайсере.** PrusaSlicer сообщает для экспорта хаба `manifold = yes`, 85 частей, положение z = 0 и нарезает без ошибок. `prototype/check_gcode.py` подтверждает присутствие ребра в траекториях: **227 из ~228 ожидаемых слоёв, z от 0.20 до 45.40 — 100% высоты ребра**, а также 1,183 перемещения в диске основания.
+
+### Какие исправления были сделаны
+
+1. **Система координат участка была неверна для наклонной грани.** `planes.js` строил вектор «вверх по грани» из компонентов `u` вместо `n`; на грани под 40° перемычки оказывались **в 13.6 мм от собственной стенки**.
+2. **Высота стенки равнялась габаритам участка.** На наклонённой детали участок — диагональная полоса в (u, z), поэтому стенка уходила в соседнюю геометрию. Теперь высота локально следует участку и ограничена `maxLen`.
+3. **`FLAT_TOL` был больше зазора.** При 0.5 мм участок мог выгибаться дальше, чем отстоит ребро: стенка на одной стороне уходила на 1.7 мм внутрь детали, а 45 из 78 перемычек соединялись с воздухом. Теперь предел определяется зазором и заглублением перемычки.
+
+### Зафиксированные выводы
+
+- **Проверка препятствий — это полоса, а не полупространство.** Поиск любой поверхности снаружи внутренней грани стенки блокирует дальнюю сторону каждой полости. Ограничение внешней гранью стенки задаёт правильный вопрос.
+- **Широкий поиск, точное подтверждение.** Полоса остаётся дешёвым примитивом поиска; `inside.js` затем проверяет готовое ребро лучами на чётность. Сетка строится один раз в исходной системе координат.
+- **Для места предлагается несколько ранжированных окон.** Одно заглублённое окно больше не отбрасывает всю грань: `filter_housing` при 25° получает чистое ребро из второго варианта.
+- **Разделение рёбер должно быть позиционным, а не только угловым.** Две стороны тонкого ребра находятся под 180° и проходили старую проверку, создавая два «противоположных» ребра на расстоянии **1.6 мм**. `minSiteGap` обеспечивает требуемый рычаг.
+- **BVH не понадобился.** Проверка полосы устранила его необходимость при поиске, а подтверждающий проход достаточно быстр с равномерной сеткой.
+
+### Честные ограничения
+
+- **`hub_corner` не находит место при 0 и 25°, только при 40°.** Это прежний потолок ~65%; он измерялся на поддержке, требующей плоской грани, и должен быть переизмерен для вертикальной стенки от стола.
+- **Каждый случай сейчас создаёт ровно одно ребро.** Спецификация «два ребра на противоположных сторонах» остаётся, но тестовые детали пока не дают второго места.
+- **Стабилизация не поддерживает нависания и сообщает об этом.** Хаб при 40° оставляет 8 областей без поддержки; PrusaSlicer сообщает о разрушающихся нависаниях, длинных мостах, плавающей части и слабом сцеплении со столом.
+- **Печать на реальном принтере ещё не проверена.** Чистая нарезка не равна лёгкому отделению от стола.
+
+## Состояние M5 (2026-07-26, ПЕРЕСМОТРЕНО) — Prop покрывает значительно меньше, чем было записано
+
+Режим поставляется за селектором режимов, помечен как экспериментальный и не установлен по умолчанию.
+
+**Предыдущая запись была неверной из-за инструментов.** Повторный замер 4 моделей × 4 наклона дал: 3/16 чистых поддержек, 2 неудачных построения и **11 случаев без результата**. `hub_post_foot` не строит подпорок при 0, 20, 25, 30, 40 и 50°, только при 60°. Для сравнения Stabilize даёт 8 чистых / 0 неудачных / 4 пустых результата.
+
+### Две ошибки измерений создали это число
+
+- **`check_stl.py` считал пустой результат чистым.** `if m is None: return True` оценивал отсутствие построения так же, как хорошую поддержку. Теперь пустой результат — отдельная категория: это ошибка покрытия, но не корректности геометрии.
+- **Причины пропуска Prop терялись до чтения.** `buildFins` сжимал `skipped` в `rejected`, сохраняя только `blocked`; поэтому интерфейс и `verify_fins.js` не могли показать истинную причину, например `buried: 1`.
+
+### Причина на стойке хаба: это чаша, а Prop проводит линию
+
+Нависание `hub_post_foot` — нижняя часть **шарового хаба**, чаша, а не выступ. Ковариация XY нижних точек почти изотропна: 1.08/1.03/1.31/36.1 для наклонов 0°/25°/40°/60°, а подпорок получается 0/0/0/1. `contactLine` выбирает главную ось шумовых данных, линия перескакивает между сторонами кольца, отклоняясь **в 2.4× своей хорды и до 16 мм**, и стенка корректно отбрасывается `insidePart`. `PROP.maxTortuosity` теперь вводит это условие и сообщает `notALine`.
+
+### Стенка 13 мм никогда не была реальной
+
+`hub_corner.stl` — сетка из двух тел (1158 граней плюс отдельное тело из 28 граней); `check_stl.py` раньше принимал крупнейшее тело за деталь. Подпорка, корректно заканчивающаяся в 0.2 мм под меньшим телом, измерялась относительно большего и показывала зазор 13.4 мм. `verify_fins.js` теперь пишет боковой файл `-part.stl`, поэтому проверяющему не нужно угадывать тело детали.
+
+### Зазоры ниже спецификации имеют точную причину
+
+Семейство «0.11–0.19 мм при цели 0.2» геометрическое: верх стенки плоский, шириной 0.6 мм, а зазор задан по центральной линии. На наклонённой нижней поверхности верхний угол поднимается на `half_tip × slope`. На `hub_corner` при 25° и наклоне 0.466: `0.2 − 0.3×0.466 ≈ 0.06`; углы измеряются как **0.056 и 0.306**. Исправление — опустить `top` на `half_tip × local slope` или измерять зазор по нормали; пока этого нет, поэтому Prop экспериментальный.
+
+### Деталь, стоящую на точке, вообще нельзя поддержать
+
+`hub_post_foot` имеет **0.0 мм² контакта со столом** при каждом наклоне от 0 до 165° и 574 мм² только в перевёрнутом положении 180°. Поэтому каждое нависание находится на высоте 70–100 мм, а даже геометрически правильная подпорка — стенка 1.2 мм высотой 70–104 мм. `seatingOf` теперь классифицирует опору как **грань, ребро или точку**; случай точки приоритетнее локальных объяснений.
+
+**Обобщаемый урок.** M3 считался подтверждённым — 14 замкнутых водонепроницаемых тел. Все они были ориентированы изнанкой наружу: Euler 2, без граничных рёбер, согласованная ориентация и отрицательный объём. Проверка спрашивала только `is_watertight`, а не `is_volume`. M5 повторил форму ошибки: высокий процент, где отсутствие результата считалось успехом, и диагностический канал, не умевший выразить отказ.
+
+**Дальнейшие шаги:**
+
+1. Опустить верх стенки на `half_tip × local slope`, чтобы зазор отламывания был нижней границей.
+2. Обрезать контактную линию до самого длинного свободного участка, вместо отбрасывания всей подпорки; `breakaway.py` принимает `t0,t1` и требует выбрать `t0` уже за пределами твёрдого тела.
+3. Добавить точечную подпорку (сужающуюся колонну) для чашеобразных нависаний — это третий тип поддержки, а не настройка Prop.
+
+## Открытые решения
+
+- **Название и домен.** Продукт называется Support Fins; домен ещё не куплен.
+- ~~**Утверждение «быстрее» не проверено**~~ **Подтверждено 2026-07-29** — таблица M6b + M5c показывает на 19–46% меньше пластика и на 13–34% более быструю печать, чем поддержки PrusaSlicer только от стола в той же ориентации; ограничение покрытия приведено там же.
+- **Автоматический подбор ориентации** намеренно не входит в v1.
+
+## Явно отложено
+
+Ввод 3MF / OBJ · нависания над самой деталью, а не над столом · мобильная вёрстка (вместо неё рекомендация настольного режима) · аналитика · учётные записи, облако и общий доступ.
+
+## Ограничения, определяющие каждое решение
+
+| ограничение | следствие |
 |---|---|
-| Fully client-side, nothing uploaded | no server, no account, no queue. Also the privacy pitch and a video beat. |
-| Static host (Cloudflare Pages) | the whole app is files in `web/`. Deploy = push. |
-| **No build step** | `node` is not installed on this machine and we don't need it. Vendor `three.js` as an ES module, `<script type="module">`, develop with `python3 -m http.server`. Revisit only if we outgrow it. |
-| No boolean kernel | proven in the spike: fins are separate closed solids appended to the mesh, unioned by the slicer. No WASM CAD, no `manifold3d` in the browser. |
-| Auto-placement must carry the product | **Owner's call, 2026-07-26: auto first, Draw after.** The old "auto tops out at ~65%, so manual is core" was measured against a support that needed a flat face to grip. A bed-attached vertical wall needs only a reachable underside, so the ceiling has to be re-measured before it is treated as a limit. Deriving the contact curve and its span — the two things `breakaway.py` took as arguments — is now the product, not a step toward Draw. |
+| Всё работает на стороне клиента, ничего не загружается на сервер | без сервера, учётной записи и очереди. Также аргумент о конфиденциальности и эпизод для видео. |
+| Статический хостинг (Cloudflare Pages) | всё приложение — файлы в `web/`. Развёртывание = отправка изменений. |
+| **Без этапа сборки** | `node` не установлен на этом компьютере и не нужен. Включить `three.js` как ES-модуль, `<script type="module">`, разрабатывать с `python3 -m http.server`. Пересмотреть только при необходимости. |
+| Без ядра булевых операций | доказано прототипом: рёбра — отдельные замкнутые тела, добавленные к сетке; объединяет их слайсер. Без CAD на WASM и `manifold3d` в браузере. |
+| Автоматическое размещение должно быть основой продукта | **Решение владельца, 2026-07-26: сначала автоматическое размещение, потом ручное.** Прежнее «автоматика ограничена ~65%, поэтому ручной режим — основа» измерялось для поддержки, которой нужна плоская грань для захвата. Вертикальной стенке от стола нужна лишь доступная нижняя поверхность, поэтому потолок нужно измерить заново, прежде чем считать его ограничением. Получение контактной кривой и её диапазона — двух аргументов `breakaway.py` — теперь и есть продукт, а не шаг к ручному размещению. |
 
-## Libraries (all MIT, all vendored)
+## Библиотеки (все MIT, все включены в репозиторий)
 
-- **three.js** — scene, `STLLoader`, `STLExporter`, `OrbitControls`, `TransformControls`.
-  Not a packaged "STL viewer widget": we need scene access to shade overhangs and
-  preview fins.
-- **three-mesh-bvh** — fast raycasting. Fin placement is raycast-bound (the probes fire
-  thousands of rays per part); the naive raycaster will not keep up on a 70k-face STL.
+- **three.js** — сцена, `STLLoader`, `STLExporter`, `OrbitControls`, `TransformControls`.
+  Не готовый «виджет просмотра STL»: нужен доступ к сцене для подсветки нависаний
+  и предварительного просмотра рёбер.
+- **three-mesh-bvh** — быстрые пересечения лучей. Размещение рёбер ограничено скоростью
+  таких проверок (тысячи лучей на деталь); наивный алгоритм не справится со STL на 70 тыс. граней.
 
-That is the entire dependency list. If a third library shows up, question it.
+Это весь список зависимостей. Появление третьей библиотеки нужно обосновать.
 
 ---
 
-## Feature set
+## Набор функций
 
-### Load
-- Drag-and-drop / file picker, binary + ASCII STL.
-- Stats bar: filename, triangle count, bbox in mm, watertight yes/no.
-- **Sample model button** — try it with no file. Gates nothing, but it's the difference
-  between a bounce and a first export, and it's what the video demos.
+### Загрузка
+- Перетаскивание файла или диалог выбора, двоичный и ASCII STL.
+- Строка статистики: имя файла, число треугольников, габариты в мм, замкнутость сетки.
+- **Кнопка примера модели** — попробовать без своего файла. Ничего не блокирует, но отличает
+  уход со страницы от первого экспорта; именно её показывает видео.
 
-### View
-- Build plate with grid, part resting on it, orbit / pan / zoom.
-- Printer volume box with presets (default P1: 250×220×270; P2 256³; P3 300×300×330).
-- **Overhang shading** — faces steeper than the threshold painted red, live. This is the
-  diagnosis view and it's ~10 lines. It is also the single most screenshot-able thing
-  in the app.
+### Просмотр
+- Печатный стол с сеткой, деталь на нём, вращение камеры / панорамирование / масштабирование.
+- Параллелепипед области печати с предустановками (по умолчанию P1: 250×220×270; P2 256³; P3 300×300×330).
+- **Подсветка нависаний** — грани круче порога окрашиваются красным в реальном времени.
+  Это диагностический вид, около ~10 строк кода. Он же лучше всего подходит для снимков экрана.
 
-### Orient
-- User rotates. Primary, always. Arbitrary rotate + snap increments + "lay this face
-  on the plate" by clicking a face.
-- Live readout while rotating: overhang count, how many are finnable, part height,
-  bed contact area.
-- **2–3 ranked auto-suggestions with their tradeoffs — suggested, never applied.**
-  The spike proved why: the strength-optimal pose for one hub was 155 mm tall balanced
-  on a 100 mm needle. Geometrically valid, terrible print.
+### Ориентация
+- Поворачивает пользователь. Всегда основной способ. Произвольный поворот, привязка
+  к угловому шагу и «положить эту грань на стол» щелчком по грани.
+- Живые показатели при повороте: количество нависаний, сколько из них допускают рёбра,
+  высота детали, площадь контакта со столом.
+- **2–3 ранжированных предложения с компромиссами — только предложения, без применения.**
+  Прототип доказал почему: оптимальное по прочности положение одного узла имело высоту
+  155 мм и балансировало на игле 100 мм. Геометрически допустимо, ужасно для печати.
 
-### Strength (optional overlay)
-- Place a load arrow on the part + answer one toggle: **does it pull apart, or does it
-  lever?**
-- Score updates with orientation.
-- This toggle is not a nicety — pull-mode and bend-mode picked *different* best
-  orientations on 4 of 4 parts tested. It's also the video's best educational beat.
+### Прочность (необязательная визуализация)
+- Разместить стрелку нагрузки на детали и ответить одним переключателем:
+  **нагрузка растягивает деталь или изгибает её?**
+- Оценка обновляется при изменении ориентации.
+- Переключатель принципиален: режимы растяжения и изгиба выбрали *разные* лучшие
+  ориентации на 4 из 4 проверенных деталей. Это также лучший обучающий эпизод видео.
 
-### Supports
+### Поддержки
 
-> **PLAN REVISION, 2026-07-26.** Everything in this section was rewritten after the
-> owner looked at real output. The short version: the project took its primary
-> geometry from Slant3D's fin, which solves **toppling**, and treated
-> `breakaway.py`'s wall, which solves **overhangs**, as a secondary experimental
-> mode. That is backwards for every part in the test set. See
-> "Why the plan changed" below for the measurements.
+> **ПЕРЕСМОТР ПЛАНА, 2026-07-26.** Раздел полностью переписан после того, как владелец
+> посмотрел на реальные результаты. Кратко: проект взял за основу ребро Slant3D,
+> решающее проблему **опрокидывания**, а стенку из `breakaway.py`, поддерживающую
+> **нависания**, счёл вторичным экспериментальным режимом. Для всех деталей тестового
+> набора это наоборот. Измерения — ниже, в разделе «Почему изменился план».
 
-**There is ONE support primitive: a vertical breakaway wall.** It rises from the
-plate and stops `gap` below the part, so the part bridges that last layer and the
-wall snaps off. Everything else is a parameter of it or an optional addition.
+**Есть ОДИН примитив поддержки: вертикальная отламываемая стенка.** Она поднимается
+от стола и останавливается на `gap` ниже детали; деталь перекрывает последний слой мостом,
+а стенка отламывается. Всё остальное — её параметр или необязательное дополнение.
 
-| property | rule | why |
+| свойство | правило | обоснование |
 |---|---|---|
-| **orientation** | **always perpendicular to the plate.** Never leans. | A support carries load to the plate in compression. A 1.2mm wall leaning 40° is itself an unsupported overhang and buckles sideways. `breakaway.py` builds strictly vertical walls — its `profile()` varies the horizontal offset and the height independently — and the lean was added by this port, only so a flat wall could stay parallel to the flat face it grips. |
-| **top edge** | **contoured** to the surface above it, sampled densely, including the tip's own WIDTH | The wall follows the part; the part does not have to be flat. This is what removes the need to lean. The tip is a `tip`-wide flat, so on a sloped underside its up-slope corner is what sets the real gap — evaluate the surface at **both tip corners**, not the centreline. |
-| **length** | as long as the contact curve it serves, trimmed to where it is clear | No cap. `maxLen: 25` with the comment *"a fin is a short brace at a corner"* is the single line most responsible for useless output. |
-| **footprint** | flared foot + chamfer shoulder, scaled to wall height | Unchanged; already right. |
-| **attachment** | bed only | One clean thing to remove, not two welds to cut. |
+| **ориентация** | **всегда перпендикулярно столу.** Никогда не наклоняется. | Поддержка передаёт нагрузку на стол сжатием. Стенка 1.2 мм, наклонённая на 40°, сама является неподдержанным нависанием и выгибается вбок. `breakaway.py` строит строго вертикальные стенки: её `profile()` независимо меняет горизонтальный отступ и высоту. Наклон добавлен при переносе лишь ради параллельности плоской стенки захватываемой плоской грани. |
+| **верхняя кромка** | **повторяет контур** поверхности сверху с плотной выборкой, учитывающей ШИРИНУ самой вершины | Стенка следует за деталью; деталь не обязана быть плоской. Это устраняет необходимость наклона. Вершина — плоская полоса шириной `tip`, поэтому под наклонной поверхностью реальный зазор задаёт её верхний по склону угол. Проверять поверхность в **обоих углах вершины**, а не на осевой линии. |
+| **длина** | по длине обслуживаемой контактной кривой, с подрезкой до свободного участка | Без ограничения. `maxLen: 25` с комментарием *«ребро — короткая распорка у угла»* — единственная строка, больше всего ответственная за бесполезный результат. |
+| **основание** | расширенная подошва и фаска на переходе, масштабируемые по высоте стенки | Без изменений, уже правильно. |
+| **крепление** | только к столу | Одна аккуратно снимаемая часть, а не два сварных соединения для разрезания. |
 
-**Tines are an OPTIONAL anti-tip addition, not part of the support.** Slant3D's
-fin solves a specific problem — a part balanced on an edge that would rotate and
-fall — and the tines are what resist that torque. They do not hold up an overhang,
-and they are why the primary mode was small, low, and cornered. They stay
-available (`docs/FIN-SPEC.md` still governs their geometry) as a **Brace** option
-for the toppling case. They are no longer the default and no longer required.
+**Перемычки — НЕОБЯЗАТЕЛЬНОЕ дополнение против опрокидывания, а не часть поддержки.**
+Ребро Slant3D решает конкретную проблему: деталь балансирует на ребре, может повернуться
+и упасть, а перемычки противодействуют этому моменту. Они не подпирают нависание;
+из-за них основной режим давал маленькие низкие рёбра у углов. Они остаются доступны
+(геометрию по-прежнему определяет `docs/FIN-SPEC.md`) как **Распорка** для случаев
+опрокидывания. Они больше не включены по умолчанию и не обязательны.
 
-**The placement question is not "which region deserves a support".** It is
-**"is any part of this overhang further than `maxUnsupportedSpan` from a support?"**
-That is a measurable physical criterion, it is how a slicer thinks, and it
-replaces the per-region judgment that produced both failure modes on record —
-13 walls on a part that wanted 2, and one 4.5mm brace on a part with 3,403 mm² of
-overhang 75mm in the air.
+**Вопрос размещения — не «какая область заслуживает поддержки».** Вопрос таков:
+**«есть ли часть этого нависания дальше `maxUnsupportedSpan` от поддержки?»**
+Это измеримый физический критерий, которым пользуется и слайсер. Он заменяет оценку
+отдельных областей, породившую обе зафиксированные проблемы: 13 стенок на детали,
+которой нужны 2, и одну распорку 4.5 мм под нависанием 3,403 мм² на высоте 75 мм.
 
-#### Why the plan changed (2026-07-26)
+#### Почему изменился план (2026-07-26)
 
-Four findings, all from the shipped code and its own records.
+Четыре вывода из выпущенного кода и его собственных записей.
 
-**1. The output is an order of magnitude too small.** `voron_drive_frame` at 40°
-is 53 × 92 × 78 mm, with **3,403 mm² of overhang running from the plate up to
-74.7 mm**, over an 89 mm-long underside. The tool builds **one fin, 16.5 mm tall ×
-4.5 mm long, on a 7.4 mm stilt** — chosen from an available face measuring 60 mm
-tall × 70 mm long. The owner's sketch of what it should look like is a wall
-spanning that underside, which is exactly `breakaway_wall` and nothing like a fin.
+**1. Результат на порядок меньше необходимого.** `voron_drive_frame` при 40° имеет
+габариты 53 × 92 × 78 мм и **3,403 мм² нависания от стола до высоты 74.7 мм**
+над нижней поверхностью длиной 89 мм. Инструмент строит **одно ребро высотой 16.5 мм
+и длиной 4.5 мм на ножке 7.4 мм**, выбирая место на доступной грани высотой 60 мм
+и длиной 70 мм. На эскизе владельца стенка охватывает эту нижнюю поверхность,
+что в точности соответствует `breakaway_wall` и совсем не похоже на ребро.
 
-**2. The smallness is a stated premise, not a bug.** `FIN.maxLen = 25`, commented
-*"a fin is a short brace at a corner, not a full-length wall"*. It traces to M3,
-where naive placement gave 13 walls 12–103 mm tall and the roadmap judged they
-*"would waste more plastic than the slicer supports they replace"* — **a claim
-that was never measured**, about a 1.2 mm wall, which is the thinnest support
-there is and the product's central claim. The correction to "too many, too big"
-should have been *fewer*, not *smaller*.
+**2. Малый размер — заявленная предпосылка, а не ошибка.** `FIN.maxLen = 25`
+с комментарием *«ребро — короткая распорка у угла, а не стенка во всю длину»*.
+Это идёт от M3: наивное размещение дало 13 стенок высотой 12–103 мм, а план решил,
+что они *«потратят больше пластика, чем заменяемые поддержки слайсера»*.
+**Это утверждение никогда не измерялось** — о стенке 1.2 мм, самой тонкой возможной
+поддержке и основе обещания продукта. Ответом на «слишком много и слишком большие»
+должно было стать *меньшее количество*, а не *меньший размер*.
 
-**3. Leaning is common and structurally wrong.** Of the 16 fins the tool builds
-across the test matrix, **7 lean 25–40°**. `voron_filter_housing` at 40° is a
-35.8 mm wall leaning **40°**; at 60° it is a **147.5 mm** wall leaning 30° on a
-12.6 mm stilt. The roadmap defended this as *"a thin wall leaning up to 45° is a
-self-supporting overhang"* — true of printing a wall in isolation, false of a
-support, which has to transfer load down rather than merely exist.
+**3. Наклон встречается часто и неверен конструктивно.** Из 16 рёбер в тестовой
+матрице **7 наклонены на 25–40°**. `voron_filter_housing` при 40° получает стенку
+35.8 мм с наклоном **40°**; при 60° — стенку **147.5 мм** с наклоном 30°
+на ножке 12.6 мм. План оправдывал это тем, что *«тонкая стенка с наклоном до 45° —
+самоподдерживающееся нависание»*. Это верно для отдельной печатаемой стенки,
+но неверно для поддержки, которая должна передавать нагрузку вниз, а не просто существовать.
 
-**4. It was already written down, filed under the wrong heading.** M4's own status
-section, above, records: *"Stabilize does not serve overhangs and says so. The hub
-at 40 degrees leaves 8 regions unsupported, and PrusaSlicer independently flags
-'Collapsing overhang, Long bridging extrusions, Floating object part, Low bed
-adhesion' on that export … a 46 mm fin on a 123 mm part balanced on an edge is
-unlikely to be enough in practice."* A slicer said the primary mode does not hold
-the part up, in writing, and it was logged as an **honest limitation** rather than
-read as *the primary mode is the wrong support*. Being candid about a shortfall is
-not the same as noticing that it invalidates the design.
+**4. Всё уже было записано, но под неверным заголовком.** В собственном отчёте M4 выше:
+*«Стабилизация не поддерживает нависания и сообщает об этом. У узла при 40 градусах
+остаются 8 неподдержанных областей, а PrusaSlicer независимо предупреждает об обрушении
+нависания, длинных мостах, висящей части объекта и слабом сцеплении со столом…
+Ребра 46 мм у детали высотой 123 мм, балансирующей на кромке, вряд ли хватит на практике».*
+Слайсер письменно сообщил, что основной режим не держит деталь, но это записали как
+**честное ограничение**, вместо вывода *«основной режим использует неподходящую поддержку»*.
+Честно признать недостаток — не то же самое, что заметить, что он опровергает конструкцию.
 
-**And the underlying cause of the failures found the day before:** the port
-automated the one thing the human was doing. `breakaway_wall(bm, contact, t0, t1, …)`
-takes **the curve and the span as arguments** — *"pick t0 so contact(t0) has
-already cleared any solid the wall must NOT weld to"*. Deriving those two things
-from connected overhang regions is where the bowl-vs-ledge failure, the merged
-regions, the missing trim and the burial discards all live. The geometry was never
-the weak part. **Auto-placement stays first (owner's call), so deriving `contact`
-and `t0/t1` reliably IS the work — it is not a step on the way to something else.**
+**Корень найденных накануне ошибок:** перенос автоматизировал именно то, что раньше
+делал человек. `breakaway_wall(bm, contact, t0, t1, …)` принимает **кривую и диапазон
+аргументами**: *«выберите t0 так, чтобы contact(t0) уже вышла за тело, к которому
+стенка НЕ должна привариться»*. Получение этих двух величин из связных областей
+нависания и порождает проблемы чаши и выступа, слитых областей, отсутствующей подрезки
+и отклонений из-за заглубления. Геометрия никогда не была слабым местом.
+**Автоматическое размещение остаётся первым (решение владельца), поэтому надёжное
+получение `contact` и `t0/t1` — И ЕСТЬ задача, а не шаг к чему-то другому.**
 
-#### Measured 2026-07-28 — the revision is right, and the blockers are four small ones
+#### Измерено 2026-07-28 — пересмотр верен, а препятствий всего четыре, и они небольшие
 
-The 2026-07-26 revision above was written from the shipped code's own records.
-It has now been re-run and instrumented (`prototype/probe_wall.js`,
-`prototype/probe_straightness.js`), and the picture is **better than the plan
-assumed**: Prop's geometry is not what is failing. Four specific gates are
-throwing away walls that are otherwise correct, and each one discards a whole
-region over a local problem.
+Пересмотр от 2026-07-26 выше опирался на записи выпущенного кода. Теперь всё повторно
+запущено с измерениями (`prototype/probe_wall.js`, `prototype/probe_straightness.js`),
+и картина **лучше, чем предполагал план**: проблема не в геометрии подпорок.
+Четыре конкретные проверки отбрасывают правильные стенки; каждая отбрасывает
+всю область из-за локальной проблемы.
 
-**0. The default mode is still `stabilize`.** `buildFins` reads
-`opts.mode ?? 'stabilize'`, so every leaning fin on record is what a user
-actually sees; the vertical wall is behind an experimental selector. Re-run of
-the full matrix: **7 of the 12 fins built lean 25–40°** (`hub_corner`@0 39°,
-`filter_housing`@25 25° / @40 40° / @60 30°, `drive_frame`@60 30°,
-`hub_corner`@60 28°, `hub_post_foot`@60 27°). Flipping the default is the single
-change that most directly answers "the fin is not perpendicular to the bed."
+**0. Режим по умолчанию всё ещё `stabilize`.** `buildFins` читает
+`opts.mode ?? 'stabilize'`, поэтому каждое записанное наклонное ребро — именно то,
+что видит пользователь; вертикальная стенка спрятана за экспериментальным переключателем.
+Повторный запуск всей матрицы: **7 из 12 построенных рёбер наклонены на 25–40°**
+(`hub_corner`@0 39°, `filter_housing`@25 25° / @40 40° / @60 30°, `drive_frame`@60 30°,
+`hub_corner`@60 28°, `hub_post_foot`@60 27°). Смена режима по умолчанию — единственное
+изменение, напрямую отвечающее на «ребро не перпендикулярно столу».
 
-**1. `sweep()` is all-or-nothing, and that alone loses the flagship part.**
-`if (h < PROP.minHeight) return false` aborts the entire wall if *any* station is
-short. On `voron_drive_frame` at 25° and 40° the contact line is otherwise
-perfect — tortuosity 1.29/1.44, span 92–100 mm, **zero blocked stations** — but
-its first one or two stations sit where the underside meets the plate (h = −0.2
-mm), so the whole thing is discarded as `degenerate`. This is `breakaway.py`'s
-`t0/t1` trim, never automated. Keeping the longest contiguous usable run instead:
+**1. `sweep()` работает по принципу «всё или ничего», и уже это теряет главную деталь.**
+`if (h < PROP.minHeight) return false` отменяет всю стенку, если *хоть одно* сечение
+слишком короткое. У `voron_drive_frame` при 25° и 40° линия контакта в остальном идеальна:
+извилистость 1.29/1.44, пролёт 92–100 мм, **ни одного заблокированного сечения**.
+Но первые одно-два сечения находятся у примыкания нижней поверхности к столу
+(h = −0.2 мм), поэтому вся стенка отбрасывается как `degenerate`.
+Это так и не автоматизированная подрезка `t0/t1` из `breakaway.py`.
+Если оставить самый длинный непрерывный пригодный участок:
 
-| case | before | after trim |
+| случай | до | после подрезки |
 |---|---|---|
-| `drive_frame` @25 | nothing (`degenerate`) | **44.1 mm tall × 96.1 mm span** over 3,276 mm² |
-| `drive_frame` @40 | nothing (`degenerate`) | **66.6 mm tall × 78.4 mm span** over 3,240 mm² |
+| `drive_frame` @25 | ничего (`degenerate`) | **высота 44.1 мм × пролёт 96.1 мм** под 3,276 мм² |
+| `drive_frame` @40 | ничего (`degenerate`) | **высота 66.6 мм × пролёт 78.4 мм** под 3,240 мм² |
 
-That is the owner's sketch, rendered and looked at: a vertical wall from the
-plate, top edge contoured to the tilted underside, running nearly the length of
-the part. Compare the fin it replaces — 16.5 × 4.5 mm on a 7.4 mm stilt.
+Это эскиз владельца, отрисованный и просмотренный: вертикальная стенка от стола,
+верхняя кромка повторяет наклонённую нижнюю поверхность почти по всей длине детали.
+Сравните с заменяемым ребром: 16.5 × 4.5 мм на ножке 7.4 мм.
 
-**2. Every `buried` rejection is the tip-corner bug, and it is fatal rather than
-cosmetic.** The 2026-07-26 entry filed "sub-spec gaps" as a precision problem to
-fix later. It is not: the buried vertices sit at the wall's **top**, not its foot
-(`filter_housing`@0: 10 verts at z = 40.68 on a wall topping at 40.7; foot-height
-verts implicated: **0 of 5, 0 of 10, 0 of 23, 0 of 29**). The top is a `tip`-wide
-flat set at the *centreline*, so its up-slope corner rises by `half_tip × slope`.
-Any underside steeper than `atan(gap / half_tip)` = **33.7°** drives that corner
-inside the part, `insidePart` sees it, and the entire wall is thrown away. Most
-overhang surfaces are steeper than 33.7°. Evaluating the surface at both tip
-corners and taking the lowest removes the whole `buried` bucket on
-`drive_frame`@25/40 and `hub_corner`@40.
+**2. Каждое отклонение `buried` вызвано ошибкой угла вершины, и это критическая,
+а не косметическая проблема.** Запись от 2026-07-26 отнесла «зазоры ниже спецификации»
+к неточности, которую можно исправить позже. Но заглублённые вершины находятся
+**наверху** стенки, а не у подошвы (`filter_housing`@0: 10 вершин на z = 40.68
+при высоте стенки 40.7; причастных вершин у подошвы: **0 из 5, 0 из 10, 0 из 23,
+0 из 29**). Верх — плоская полоса шириной `tip`, заданная по *осевой линии*,
+поэтому её верхний по склону угол поднимается на `half_tip × slope`.
+Нижняя поверхность круче `atan(gap / half_tip)` = **33.7°** вводит этот угол
+внутрь детали; `insidePart` замечает это и отбрасывает всю стенку. Большинство
+поверхностей нависаний круче 33.7°. Вычисление поверхности в обоих углах вершины
+и выбор нижнего значения полностью убирает `buried` у `drive_frame`@25/40
+и `hub_corner`@40.
 
-**3. `tortuosity` measures the sampling, not the shape — so it is not a
-precondition, it is a coin flip.** Same region, same geometry,
-`voron_drive_frame`@40 R0, varying only the station count:
+**3. `tortuosity` измеряет выборку, а не форму, поэтому это подбрасывание монеты,
+а не проверка предусловия.** Одна область, одна геометрия, `voron_drive_frame`@40 R0,
+меняется только число сечений:
 
-| stations | 8 | 14 | 24 | 48 | 96 |
+| сечений | 8 | 14 | 24 | 48 | 96 |
 |---|---|---|---|---|---|
 | `tortuosity` | 1.14 | 1.44 | 1.59 | **2.08** | **3.16** |
-| RMS deviation / chord | 0.081 | 0.069 | 0.062 | 0.065 | 0.065 |
+| среднеквадратическое отклонение / хорда | 0.081 | 0.069 | 0.062 | 0.065 | 0.065 |
 
-Arc length grows without bound as you sample a curve more finely; the chord does
-not. The `maxTortuosity: 2.0` gate therefore flips on a good region purely
-because someone densified the sampling. **Replace it with RMS deviation from the
-fitted axis over chord**, which is scale- and density-independent. It separates
-the same cases the gate was built for: `drive_frame`'s servable region sits at
-0.065, `hub_post_foot`'s bowl at 0.15–0.21.
+Длина дуги неограниченно растёт при более частой выборке кривой, а хорда — нет.
+Поэтому проверка `maxTortuosity: 2.0` отклоняет хорошую область лишь потому, что кто-то
+уплотнил выборку. **Заменить на СКО от подобранной оси, делённое на хорду**:
+это не зависит от масштаба и плотности. Показатель разделяет те же случаи, для которых
+создавалась проверка: пригодная область `drive_frame` даёт 0.065, чаша `hub_post_foot` —
+0.15–0.21.
 
-**4. `samples: 14` is scale-blind, exactly as `foot: 7.0` was.** Fourteen
-stations across a 96 mm span is one every 7 mm, and a curved underside moves
-more than the 0.2 mm gap within that. Station spacing must be a **length**.
-**Order matters here and it was tested:** densifying to one station per 2 mm
-*before* fixing #3 regressed `drive_frame` from one good wall back to zero, by
-pushing tortuosity past the gate. #3 lands first.
+**4. `samples: 14` не учитывает масштаб, как раньше `foot: 7.0`.** Четырнадцать сечений
+на пролёт 96 мм — одно каждые 7 мм; за этот интервал изогнутая нижняя поверхность
+смещается больше зазора 0.2 мм. Шаг сечений должен быть **длиной**.
+**Порядок важен, и это проверено:** переход к одному сечению на 2 мм *до* исправления #3
+снова лишил `drive_frame` единственной хорошей стенки: извилистость превысила порог.
+Сначала исправление #3.
 
-**What the four fixes together do not fix — and that is M6b.** With all of them,
-walls appear in 9 of 16 cases, but coverage of the overhang area is only 9–46%
-on the parts that matter (`drive_frame`@40: one wall, 46%). The reason is
-structural: **a connected overhang "region" is a topological artifact, not a
-support unit.** Union-find over adjacent overhang faces merges the entire tilted
-underside of `drive_frame` into one 3,240 mm² region whose contact line is 6.4 mm
-RMS off any straight axis. One wall per region can never cover it. M6b's job is
-to stop asking "one wall per region" and start asking "walls spaced at
-`maxUnsupportedSpan` under a height field."
+**Чего не исправляют все четыре решения вместе — задача M6b.** После них стенки
+появляются в 9 из 16 случаев, но покрытие нависаний на важных деталях всего 9–46%
+(`drive_frame`@40: одна стенка, 46%). Причина структурная: **связная «область»
+нависания — артефакт топологии, а не единица поддержки.** Union-find соседних нависающих
+граней сливает всю наклонённую нижнюю поверхность `drive_frame` в одну область 3,240 мм²,
+линия контакта которой имеет СКО 6.4 мм от любой прямой оси. Одна стенка на область
+никогда её не покроет. Задача M6b — перейти от «одной стенки на область» к «стенкам
+с шагом `maxUnsupportedSpan` под полем высот».
 
-- Per-fin params with spec defaults (`docs/FIN-SPEC.md`): standoff 0.2, tine 0.3 tall ×
-  0.4–0.8 wide, 7–8 tines low spreading with height, 1 mm elliptical base, rounded top.
-- **Layer height + nozzle width inputs.** Easy to miss and load-bearing: tine height *is*
-  one layer, tine width *is* one or two nozzle passes. The spec numbers are derived from
-  these, not constants.
+- Параметры каждого ребра со значениями по спецификации (`docs/FIN-SPEC.md`): отступ 0.2,
+  перемычка высотой 0.3 и шириной 0.4–0.8, 7–8 перемычек внизу с растущим шагом,
+  эллиптическое основание 1 мм, скруглённый верх.
+- **Поля высоты слоя и ширины сопла.** Легко упустить, но принципиально: высота перемычки —
+  *ровно* один слой, ширина — *ровно* один-два прохода сопла. Числа спецификации
+  выводятся из этих параметров, а не являются константами.
 
-### Part modifications (ask first, always)
-- **2 mm bottom chamfer** on the bed-contact edge — a tilted part otherwise starts on a
-  single line and peels off.
-- **Bed pad** — required, not optional, for tilted parts: nearly every tilted candidate
-  has bed contact ≈ 0.
-- Both change *the user's part*, not just add a fin. Explicit checkbox, never silent.
+### Изменение детали (всегда сначала спрашивать)
+- **Нижняя фаска 2 мм** на кромке контакта со столом: иначе наклонённая деталь
+  начинается с одной линии и отрывается.
+- **Опорная площадка** обязательна для наклонённых деталей: почти у любой такой
+  ориентации контакт со столом ≈ 0.
+- Оба действия меняют *деталь пользователя*, а не просто добавляют ребро.
+  Явный флажок, никогда скрытно.
 
-### Export
-- Binary STL, fins + pad baked in.
-- Small report: what was added, the intended print orientation, "no supports needed".
-- **Honest-limitations panel** — overhangs sitting over the part rather than the plate,
-  features under the wall-height floor, regions with no vertical face, **bowl-shaped
-  overhangs with no line to sweep, and parts that touch the plate at a single point**
-  (nothing the tool adds can hold one — the answer is to rotate). Naming these
-  builds more trust than hiding them, and it's a chapter in the video.
+### Экспорт
+- Двоичный STL со встроенными рёбрами и площадкой.
+- Краткий отчёт: что добавлено, предполагаемая ориентация печати, «поддержки не нужны».
+- **Панель честных ограничений**: нависания над деталью, а не столом; элементы ниже
+  минимальной высоты стенки; области без вертикальной грани; **чашеобразные нависания
+  без линии для протяжки и детали, касающиеся стола единственной точкой**
+  (ничто добавленное инструментом не удержит их; нужно повернуть деталь).
+  Явное описание вызывает больше доверия, чем сокрытие; это отдельный раздел видео.
 
-### Footer
-- Ko-fi button, GitHub link, MIT, and a "runs entirely in your browser — nothing is
-  uploaded" badge.
-- **Placement: after a successful export, not above the fold.** Ask at the moment the
-  thing has already delivered value.
-
----
-
-## Milestones
-
-Each one ends at something you can open in a browser and judge.
-
-| # | ships | done when |
-|---|---|---|
-| ~~**M0**~~ ✅ | `index.html` + vendored three.js. Drag-drop an STL, orbit it, build plate + printer box. | ~~A Voron STL loads and spins at 60fps.~~ **Done** — 35,520-tri Voron frame at 60fps, no console errors. |
-| ~~**M1**~~ ✅ | Overhang shading + stats readout. No fins yet. | ~~Red faces match what the Python probe reports on the same file.~~ **Done** — exact match on two models (4,782 faces / 264.6 mm² / 563 raw / 2 regions), threshold slider live at 2–8 ms. |
-| ~~**M2**~~ ✅ | Orientation: rotate gizmo, snap-to-face, live readout. | ~~Rotating a part visibly changes the overhang count.~~ **Done** — standing a Voron plate on edge moves it from 265 mm² of overhang / 3110 mm² bed contact to 1310 / 73, re-analysed in 1–6 ms. |
-| ~~**M3**~~ ✅ | Fin placement + STL export, end-to-end. *Gap-only geometry — internal milestone, never shipped.* | ~~Exported STL opens in a slicer with the fin present.~~ **Done** — 13 fins on a tilted Voron frame, exported as 14 closed solids (1 part + 13 fins), all watertight, seated at z=0. Validated with trimesh, **not yet opened in a real slicer.** |
-| ~~**M4**~~ ⚠️ | **Tines + Stabilize mode.** Fin stands beside the part on a vertical face, horizontal tines fused in, regions clustered per face. Bed pad included. | **Built and verified, then DEMOTED by the plan revision.** The geometry is correct (8/8 built cases clean, sliced, 227 of ~228 fin layers in the toolpaths) but it is the wrong primary support: it braces against toppling, it does not hold up an overhang. Survives as the optional **Brace**. Never test-printed. |
-| ~~**M5**~~ ⚠️ | **Prop mode** — a breakaway wall under each overhang. | **Landed experimental at 3/16 and superseded.** Its geometry is the right primitive; its *derivation* of the contact curve is what failed. Rebuilt as M5b. |
-
-### Revised, from here
-
-> **Executing any of these? Read `docs/IMPLEMENTATION-PLAN.md` first.** It is the
-> self-contained how-to for M5c / M6b / M7b: exact commands, the baseline
-> numbers, the ten invariants that each cost a measured regression, and which
-> "built nothing" cases are correct refusals rather than misses.
-
-| # | ships | done when |
-|---|---|---|
-| ~~**M5a**~~ ✅ | **The checker grows a coverage metric, before any geometry changes.** % of overhang area whose centroid lies within `maxUnsupportedSpan` (XY) of some wall's centreline, reported per case alongside clean/failed/empty. Prototyped in `prototype/probe_wall.js`; lift it into `check_stl.py` so it judges shipped output. | The current matrix is re-scored and the coverage column is in the table. A 4.5 mm brace under 3,403 mm² reads as ~0%, which is the number that was missing. |
-| ~~**M5b**~~ ✅ | **The wall primitive, done properly** — the four measured fixes, *in this order*: (1) **straightness gate** — replace `tortuosity` with RMS-deviation/chord, threshold from data (~0.10, between 0.065 and 0.15); (2) **tip-corner contouring** — evaluate the underside across the tip's own width and take the lowest, so `gap` is a floor; (3) **trim, don't discard** — keep the longest contiguous run of usable stations instead of aborting the sweep, the `t0/t1` trim `breakaway.py` asked a human for; (4) **station spacing as a length**, not `samples: 14`. Vertical always, no length cap, foot scales with height. | `voron_drive_frame` at 40° gets a wall spanning its raised underside that matches the owner's sketch (**prototyped: 66.6 mm × 78.4 mm, rendered**), measures 0.20 mm at its closest approach with the gap as a floor — `check_stl.py`'s ±0.05 band, currently failing at 0.003–0.343 — and slices. **This milestone is a picture next to a sketch.** |
-| ~~**M5c**~~ ✅ | **Flip the default from `stabilize` to the wall,** and demote the fin to the `brace` option the revision describes. Empty-state copy names the wall's own skip reasons. | **Done 2026-07-29.** `buildFins` defaults to `prop`, the selector lists Prop first and calls the fin **Brace — stop it toppling**, "experimental" is gone. A user who loads a part and exports gets a vertical wall. |
-| ~~**M6b**~~ ✅ | **Coverage, not one-wall-per-region.** The connected overhang region is a topological artifact — `drive_frame`'s whole underside is one 3,240 mm² region, 6.4 mm RMS off any axis, and one wall covers 46% of it. Replace region→wall with underside height field → a **set** of walls spaced at `maxUnsupportedSpan`. | **Done 2026-07-28/29** — `splitRegion` + `patchTracks` (rows of parallel walls). Matrix coverage **13% → 61%**, `drive_frame`@40 **86%**, `filter_housing`@60 **94%**, 10/16 clean, **zero** failed walls, and all 6 empties are measured correct refusals (see M6b status below). |
-| **M7b** | Judgment + honesty: `maxUnsupportedSpan` as the user-facing dial, plastic cost readout, limitations panel, point-balanced gate (landed), Brace as an option. | A part that needs 2 walls gets 2, a part that needs 9 gets 9, and the panel names what it could not reach. |
-| **M8** | Draw mode + strength overlay: load arrow, pull-vs-lever toggle, ranked suggestions. | A part auto refuses can be supported by hand; toggling pull↔lever changes the recommended orientation. |
-| **M9** | 2 mm chamfer + permission checkboxes, sample model, Ko-fi, domain. | A stranger can use it without being told anything. |
-
-## Python parity (2026-07-29, later) — the input was polluted, the gate was backwards, and the tube was shattered
-
-The owner's complaint — "breakaway.py makes perfect fins on the shelter hubs
-and this app has never done anything like it" — was correct, and it took
-three stacked findings to honor it. All landed the same day.
-
-**1. `dev-models/hub_corner.stl` was the python script's OUTPUT, not a part.**
-It is byte-identical in shape to `hub.py --supports` after `manifold_repair`:
-1,158 + 28 faces, where the 28-face body is one of breakaway.py's own webs and
-a second web is UNIONED INTO the part body via the core pad. Every hub_corner
-number ever measured here was measured against a part that already carried its
-supports. **This retracts yesterday's `hub_corner`@0 verdict**: the "part's own
-base tab" the raycast hit was the baked web's flared foot, and the "ledge" the
-app kept refusing sits exactly 0.2 mm above the old web's top — the app was
-refusing to support an overhang because the python support was already there.
-The dev model is now the bare part (`hub.py --supports off` + repair, flipped
-to print orientation, 936 faces, one body). The two-body checker workaround
-(`-part.stl` sidecar) stays, because multi-body inputs are still legal.
-
-**2. A point-seated part with the pad ON is seated BY THE PAD.** The bare hub
-core is a sphere: 0.0 mm² of bed contact in print orientation. The gate
-refused all props for exactly the part the whole tool descends from, while
-hub.py printed it fine as pad + webs. `buildFins` now refuses a point-seated
-part only when the user has the pad off; the readout says the pad is
-load-bearing. This also un-refused `hub_post_foot` at 25/40/60 (89/96/69%
-coverage — tall walls, priced by M7b's cost readout, warned about today).
-
-**3. A tube's support is ONE wall under its lowest line, and splitRegion was
-shattering it.** The 15° grow cut turns a curved tube band into facet strips,
-each with its own track along its own axis — six short crossing walls where
-breakaway.py sweeps one web along `tube_underside()` (rendered: the star of
-walls under the ball, hub_corner@25). `tubeLine()` now routes CURVED regions
-(≥40% of area >25° off the mean normal — the fraction, never the worst face,
-which mis-routed the drive frame's pocketed plane and regressed it 86%→34%
-before being caught; and ≥300 mm², because small curved POCKETS drift off a
-straight chord — one measured 0.297) to a single lowest-line wall, resampled
-at stationStep the way patchTracks samples (the mesh's own vertices gave 6
-stations over 41 mm). Flat regions keep their rows; bowls still fall through
-(the ring wanders) to the patch path and its hole-splitting.
-
-**Matrix after all three (clean models):** 13/16 clean, **70% coverage** (was
-61%), zero systematic failures. `hub_corner`@0 — the python-parity case —
-builds the long ridge-tube wall plus pad and slices at **68.9 cm³ / 4h03m vs
-89.0 cm³ / 5h44m** with slicer supports: −23% plastic, −29% time. Rendered
-side by side with the hub.py reference (`hub_ref.png` / `hub_corner-0-app.png`
-in ~/Downloads/support-fins-renders): same support, derived instead of
-hand-scripted. Remaining gaps vs python, both understood: the 45° rafter web
-(hub.py webs *at* 45°, our threshold is strictly steeper — the user's slider
-covers it) and a few small walls on the sphere's low band that hub.py leaves
-to the pad (judgment, M7b). Known marginal: one `hub_post_foot`@40 wall has a
-~0.26 worst-spot gap (bridges saggier, no weld); the checker's random sampling
-flips that case between OK and FAIL run to run — fix direction is measuring
-the gap perpendicular to the surface in `contourTop`, not raising `settleTop`.
-
-**Stabilize after all three: 12/12 clean** — no regression.
-
-## M6b + M5c status (2026-07-29) — landed, and the empties are all honest
-
-**The matrix's six empty cases are now all correct refusals, each verified
-against the geometry rather than assumed:**
-
-- `hub_post_foot` at **all four tilts** — 0.0 mm² of bed contact from 0° to
-  165°; the point-seating gate refuses before building and the UI says to
-  rotate. (The plan expected @60 to build a wall; that wall was a 104 mm
-  scaffold on a part that cannot stand, and refusing it is the better answer.)
-- `voron_drive_frame` @0 — two trivial regions 0.5 mm off the plate.
-- `hub_corner` @0 — ~~**investigated 2026-07-29, and it is the bed-only
-  limitation, not a miss.**~~ **RETRACTED the same day — see "Python parity"
-  above.** The "part's own base tab" the raycast hit was a breakaway web from
-  `hub.py --supports`, baked into the dev model itself. On the bare part this
-  case builds the ridge-tube wall and is the python-parity flagship. (The
-  probe-ladder observation below stands: `stationIsClear` never looks below
-  z≈1.4 and `stationCertified` is what catches low obstacles at the foot.)
-- **A narrow-foot retry was tried and REVERTED — don't re-derive it.** The
-  hypothesis was that only the flared foot collided at `hub_corner`@0 (probes
-  failed at o=±3.3, z=1.25, the flare band). Threading a `footCap` through
-  `stationIsClear`/`stationCertified`/`sweep` and retrying failed walls at
-  `footMin` changed **nothing anywhere in the matrix** — the tab sits under
-  the wall's whole footprint, not just under its flare. Complexity that
-  rescues zero cases does not ship.
-
-**M5c landed the same day:** `buildFins` defaults to `prop`, `app.js` starts
-on `prop`, the selector reads "Prop — hold up each overhang" / "Brace — stop
-it toppling" with "experimental" dropped. Stabilize re-verified after the
-flip: 11/12 clean, 0 failed, coverage 5% — no regression, and the 5%-vs-61%
-gap is the flip's justification, measured.
-
-**The unverified claim is now verified — both halves (2026-07-29).** Same
-export, same orientation, PrusaSlicer 2.9.6 defaults; walls baked in vs. bare
-part with the slicer's own supports (buildplate-only, matching our bed-only
-rule):
-
-| case | walls baked in | slicer supports | plastic | time |
-|---|---|---|---|---|
-| `drive_frame` @40 | 26.1 cm³ · 2h58m | 48.5 cm³ · 4h17m | **−46%** | **−31%** |
-| `filter_housing` @25 | 76.8 cm³ · 6h38m | 125.8 cm³ · 10h03m | **−39%** | **−34%** |
-| `hub_corner` @25 *(re-measured on the clean part)* | 75.0 cm³ · 4h59m | 88.2 cm³ · 5h50m | **−15%** | **−15%** |
-| `hub_corner` @0 *(print orientation, the python-parity case)* | 68.9 cm³ · 4h03m | 89.0 cm³ · 5h44m | **−23%** | **−29%** |
-
-**State the caveat whenever the number is used:** slicer supports cover 100%
-of overhangs; the walls covered 86% / 71% / 61% / 44% on these cases. Some of the
-saving is coverage the walls do not attempt (short spans under
-`maxUnsupportedSpan` that bridge fine, plus refusals). That is the design —
-support only what needs support — but the honest sentence is "less plastic
-partly because it supports less, on purpose."
-
-## M5a + M5b status (2026-07-28) — landed
-
-**M5a is in `check_stl.py`.** `coverage()` reports the percentage of overhang
-AREA within `MAX_UNSUPPORTED_SPAN` (12 mm) of a support, per case and summed
-across the matrix. A point counts as served only when a support has geometry
-near it in XY *and* at roughly its own height — without the height test a
-flared foot "serves" every overhang it happens to stand near in plan view.
-The first thing it measured is the number this project most needed:
-
-| mode | clean | overhang coverage |
-|---|---|---|
-| Stabilize (the fin) | 8/12 | **4%** |
-| Prop (the wall) | 8/16 | **13%** |
-
-The fin was never a support. It is now measured saying so, rather than argued
-about.
-
-`check_props` also stopped conflating two different clearances. The breakaway
-gap (wall top to the part above it, must be 0.2) and the flank clearance (wall
-sides to anything beside them, must merely never fuse) were one number, which
-failed walls whose flanks were correctly standing well clear. They are told
-apart by where the nearest part surface is relative to the sample, not by the
-wall's parameterisation.
-
-**M5b is in `prop.js`**, all four fixes plus two that the measurements forced:
-
-| | change | why |
-|---|---|---|
-| 1 | `straightness()` replaces `tortuosity()` | the old gate measured the sampling |
-| 2 | `contourTop()` | the tip's up-slope corner was buried past 33.7° of slope |
-| 3 | `longestRun()` + trim | one short station discarded a 92 mm wall |
-| 4 | `stationStep` (mm) replaces `samples` (count) | scale-blind, like `foot: 7.0` was |
-| 5 | `stationIsClear` probes the full height, outboard | both remaining welds were on the flank, above the last probe |
-| 6 | `settleTop()` | closes the loop: measure the built edge, lower it onto spec |
-
-**#6 is the one worth not re-deriving.** The generator confirms with sampled
-points and the checker measures exact surface-to-surface distance, so no amount
-of denser probing makes them agree — that chase is what produced the "0.11–0.19
-where 0.2 was intended" family the roadmap carried for two milestones. Measure
-the finished top edge, then move it. Two things about it were learned the hard
-way: it must **lower only** (raising on region-only evidence welded the wall to
-geometry it could not see — the matrix went 6 clean to 0, gaps of 0.002 mm), and
-it must be **per station** (one global shift let a single low triangle drop the
-whole wall 0.48 mm below the part, too far to land on).
-
-Result: breakaway gaps now measure **0.15–0.22 mm** against a 0.2 spec, every
-wall is vertical and seated at z = 0, and the flagship `voron_drive_frame` gets
-the wall from the owner's sketch. Rendered and looked at. Stabilize is unchanged
-at 8/12, so nothing regressed.
-
-**Still open, and honestly:** coverage is 13%. Six of sixteen cases build
-nothing, and the reason is now almost entirely the straightness gate rejecting
-regions that are genuinely curved. That is M6b's job — split the region, do not
-loosen the gate. `stationStep` is set to 1.0 rather than 2.0 for the same
-reason: at 2.0 the matrix scores 8 clean / **2 walls that would weld** / 18%
-coverage, at 1.0 it is 8-9 clean / **zero** bad walls / 13%. Coverage is a
-milestone away; a fused support is a ruined print.
-
-**The checker has to grow a coverage metric before M5b, not after** — it is M5a
-above, and it is prototyped and measured, not merely specified. Nothing in
-`check_stl.py` ever asked whether a support *holds anything up* — it asks only
-whether the solid is clean, outside the part, and correctly spaced. A 4.5 mm brace
-under 3,403 mm² of overhang passes every one of those. The new gate is
-**"% of overhang area within `maxUnsupportedSpan` of a support"**, and it would
-have caught this on day one. This is the same lesson as yesterday's "empty counted
-as clean", one level up: *the scoreboard has to measure the thing you actually want.*
-
-**The bed pad stays early.** Nearly every tilted part has bed contact ≈ 0 — it rests
-on an edge — so without a pad there is no test print to judge. The 2 mm bottom
-chamfer stays late: it modifies *the user's own geometry* rather than adding a solid
-beside it, so it cannot ship before the permission UI that asks about it.
-
-**"M3 never ships" was wrong, twice over.** It was retired on the grounds that a
-tine-less wall "only constrains the part in one direction", citing Slant3D's cube
-falling away from exactly that support. But that demo is a part balanced on an
-EDGE with the support as its only restraint; a wall propping an overhang from
-beneath, on a part that is otherwise sitting down, has gravity holding the part
-onto it. `breakaway.py` has no tines anywhere and produced good supports on real
-printed shelter hubs. The tine-less bed-attached wall is now the **primary**
-primitive, and M3's geometry — modulo the inside-out winding nobody caught — was
-closer to right than what replaced it.
-
-**And the "13 fins" finding was misread.** On a Voron frame stood on edge, naive
-placement puts a wall under all 13 servable regions, 12–103 mm tall on a 116 mm
-part, and the roadmap called them *"full-height scaffold walls that would waste
-more plastic than the slicer supports they replace."* **That comparison was never
-run.** A 1.2 mm wall is the thinnest support that exists — it is the product's
-central claim — and the correct response to "13 is too many" is *fewer walls*,
-not *smaller walls*. Reading it as the latter is what produced `maxLen: 25` and a
-4.5 mm brace under 3,403 mm² of overhang.
-
-So placement is **not a mode and not a judgment call about intent.** It is a
-coverage criterion: *no point of an overhang may be further than
-`maxUnsupportedSpan` from a support.* The count then falls out of the geometry —
-a part that needs 2 gets 2, a part that needs 9 gets 9 — and the dial is exposed
-to the user rather than guessed at. **Before `maxUnsupportedSpan` is defaulted,
-measure the plastic both ways** (walls vs. the slicer's own supports) so the
-claim the project rests on is finally a number.
+### Подвал страницы
+- Кнопка Ko-fi, ссылка GitHub, MIT и отметка «полностью в браузере — ничего
+  не загружается на сервер».
+- **Размещение: после успешного экспорта, не на первом экране.** Просить тогда,
+  когда инструмент уже принёс пользу.
 
 ---
 
-## Settled while building
+## Этапы
 
-- **The overhang threshold must be strict, with an epsilon.** 45° is the canonical
-  designed-in chamfer angle, so real parts carry thousands of faces landing *exactly* on
-  the boundary, and a face at exactly the threshold is self-supporting. The Python probe's
-  truncated `0.7071` constant was 7.6e-6 looser than `cos(45°)` and silently pulled every
-  45° chamfer in — on one Voron part, 45 extra faces but **318 mm², a 2.1× overstatement**
-  of overhang area. Both sides now use `cos(threshold) + 1e-4` and `nz` in float64.
-  This is the same failure as the spike's "6 fins on a part that needs zero," one layer
-  down: **judgment starts at the threshold comparison.**
-- **Browser and Python must agree numerically, and it's checked.** `web/overhangs.js`
-  mirrors `prototype/spike_overhangs.py` constant-for-constant; `window.__sf` exposes the
-  topology and analyzer so the two can be diffed on the same file.
-- **Lighting is a legibility requirement, not decoration.** Overhangs are on the underside,
-  so the user looks *up* at the part most of the time. A conventional key-from-above rig
-  leaves exactly the faces this tool exists to show sitting in the dark.
-- **Rotation is cheap because welding is rotation-invariant.** Turning a part cannot change
-  which triangles touch, so a rotation re-runs only the linear classify pass (1–6 ms) and
-  never the weld (28–119 ms). That is what lets the readout update live during a drag.
-- **Orientation is applied as a transform, never baked into the geometry.** The mesh stays
-  in its original frame and the analysis takes a rotation matrix, so nothing accumulates
-  float error across a hundred rotations and the original file is always recoverable.
-- ~~**The fin leans with the part.**~~ **REVERSED 2026-07-26 — walls are always
-  vertical.** The original reasoning was that requiring a *vertical face* to stand
-  against is self-defeating, since tilting a part is exactly what stops its faces
-  being vertical (at 30°, the first version found ONE site on a 35,520-face Voron
-  frame). That problem is real; leaning was the wrong answer to it. A thin wall
-  leaning 45° is a self-supporting overhang *as a printed object*, but a support
-  has to carry load to the plate, and a 1.2 mm wall at 40° buckles sideways rather
-  than taking it in compression — measured: 7 of 16 fins lean 25–40°, one of them a
-  147 mm wall on a 12.6 mm stilt. **The right answer to a non-vertical face is a
-  vertical wall with a contoured top edge**, which is what `breakaway.py` does and
-  what removes the need for the face to be flat *or* vertical.
-- **Planar segmentation must grow from a seed plane, never merge pairwise.** Union-find
-  over adjacent faces whose normals agree within 12° *creeps*: a cylindrical boss's faces
-  each differ from the next by a few degrees, so the whole cylinder merges into one "flat"
-  patch and swallows any real wall it touches. Region-growing against the seed's own plane
-  cannot creep — the hundredth face is judged by the same plane as the first.
-- **Verification runs headless, in `deno`.** `overhangs.js`, `planes.js` and `fins.js`
-  import no three.js, so `prototype/verify_fins.js` runs the *shipping* modules over real
-  STLs and hands the output to trimesh. This is not a build step and does not change the
-  no-node constraint — it is a dev-only check. It immediately caught an area-weighting bug
-  that put every plane at d/3, which no amount of looking at the screen would have found.
-- **A flat wall does not need a flat PART, and assuming it did was the single
-  biggest limit on coverage.** Requiring a patch to be flat symmetrically meant a
-  fin could grip exactly one facet of a round surface — on hub_post_foot at 70°
-  the best grip available anywhere on the part was 0.86mm, so nothing could be
-  placed at any angle a human would choose. The budget is asymmetric now: the
-  surface may not bulge TOWARD the fin at all (the plane is a supporting plane,
-  touching the window's outermost point, so every deviation is negative by
-  construction), but it may recede up to 1.2mm, and each tine measures its own
-  gap and reaches further. The limit on receding is the limit on a tine: 1.5mm of
-  unsupported span, which `prototype/probe_tines2.py` established years before it
-  was needed here. One flat wall now spans many facets of a cone.
-- **Cheap search, exact confirmation — applied three times now.** The pattern
-  that keeps working: search with something fast and approximate, then verify the
-  finished geometry exactly and discard what fails. The wall gets a containment
-  test (`inside.js`), the finished fin gets a clearance test against the volume it
-  actually occupies (the plane moves after the search, so the search cannot be
-  trusted about it), and every tine is confirmed to bite before it is emitted.
-  Each of those three caught a real defect that all the cheaper checks passed.
-- **Fins are rebuilt when a drag ENDS, not during it.** The confirmation passes
-  cost ~100ms on a 43k-face part: fine once, unusable at 60fps. Overhang shading
-  still updates live at 1-6ms, so the thing the user is steering by never stalls,
-  and the fins grey out while they are stale rather than showing a stale answer
-  as if it were current.
-- **Serve dev with caching off** (`dev-server.py`). `python3 -m http.server` sends no
-  `Cache-Control`, so browsers heuristically cache ES modules; editing a module and
-  reloading then silently runs the old code and looks exactly like a logic bug.
+Каждый заканчивается результатом, который можно открыть в браузере и оценить.
 
-## M4 status (2026-07-26)
+| # | результат | критерий завершения |
+|---|---|---|
+| ~~**M0**~~ ✅ | `index.html` и включённая three.js. Загрузка STL перетаскиванием, вращение, печатный стол и область принтера. | ~~Voron STL загружается и вращается при 60 кадрах/с.~~ **Готово**: рама Voron на 35,520 треугольников при 60 кадрах/с, без ошибок в консоли. |
+| ~~**M1**~~ ✅ | Подсветка нависаний и статистика. Пока без рёбер. | ~~Красные грани совпадают с отчётом Python для того же файла.~~ **Готово**: точное совпадение на двух моделях (4,782 грани / 264.6 мм² / 563 исходные / 2 области), ползунок порога обновляется за 2–8 мс. |
+| ~~**M2**~~ ✅ | Ориентация: манипулятор поворота, привязка к грани, живые показатели. | ~~Поворот детали заметно меняет число нависаний.~~ **Готово**: постановка пластины Voron на ребро меняет нависания 265 мм² / контакт со столом 3110 мм² на 1310 / 73, повторный анализ за 1–6 мс. |
+| ~~**M3**~~ ✅ | Размещение рёбер и экспорт STL, полный цикл. *Геометрия только с зазором — внутренний этап, не выпускался.* | ~~Экспортированный STL открывается в слайсере с ребром.~~ **Готово**: 13 рёбер на наклонённой раме Voron, экспорт 14 замкнутых тел (1 деталь + 13 рёбер), все герметичны, стоят на z=0. Проверено trimesh, **в настоящем слайсере ещё не открывалось.** |
+| ~~**M4**~~ ⚠️ | **Перемычки и режим стабилизации.** Ребро рядом с вертикальной гранью, горизонтальные перемычки вплавлены в деталь, области сгруппированы по граням. Включена опорная площадка. | **Построено и проверено, затем ПОНИЖЕНО в приоритете при пересмотре плана.** Геометрия верна (8/8 построенных случаев без ошибок, нарезано, 227 из ~228 слоёв ребра есть в траекториях), но это неверная основная поддержка: она защищает от опрокидывания, а не держит нависание. Остаётся как необязательная **Распорка**. Пробной печати не было. |
+| ~~**M5**~~ ⚠️ | **Режим подпорки** — отламываемая стенка под каждым нависанием. | **Выпущен экспериментально с 3/16 и заменён.** Геометрический примитив верен; ошибалось *получение* контактной кривой. Перестроен как M5b. |
 
-**Geometry and site selection: done, verified, and sliced.** `prototype/verify_fins.js`
-generates, `prototype/check_stl.py` judges, and both run over the three dev models at
-0/25/40 degrees. **9/9 cases clean**, where clean means all five of:
+### Пересмотренный план дальнейшей работы
 
-- every added solid watertight and a positive volume;
-- no wall or base vertex inside the part;
-- every tine fused into the part;
-- every tine attached to its own wall;
-- standoff measured 0.200-0.233 mm against a 0.2 mm spec.
+> **Выполняете любой из этих этапов? Сначала прочитайте `docs/IMPLEMENTATION-PLAN.md`.**
+> Это самодостаточная инструкция для M5c / M6b / M7b: точные команды, исходные числа,
+> десять инвариантов, каждый из которых стоил измеренной регрессии, и различие между
+> правильными отказами и пропусками в случаях «ничего не построено».
 
-**It has now been through a real slicer**, which had never happened before. PrusaSlicer
-reports the hub export `manifold = yes`, 85 parts, seated at z = 0, and slices it without
-error. `prototype/check_gcode.py` confirms the fin is really in the toolpaths: **227 of
-~228 expected layers, z 0.20 to 45.40 — 100% of the fin's height** — plus 1,183 moves in
-the base disc. A fin too thin to slice would have vanished here and passed every
-mesh-level check in the repo.
+| # | результат | критерий завершения |
+|---|---|---|
+| ~~**M5a**~~ ✅ | **Добавить проверке метрику покрытия до изменения геометрии.** % площади нависаний, центры граней которых лежат в пределах `maxUnsupportedSpan` (XY) от осевой линии стенки; отчёт по случаю рядом с успехом/ошибкой/пустым результатом. Прототип в `prototype/probe_wall.js`; перенести в `check_stl.py` для оценки рабочего результата. | Текущая матрица оценена заново, столбец покрытия есть в таблице. Распорка 4.5 мм под 3,403 мм² даёт ~0% — именно этого числа не хватало. |
+| ~~**M5b**~~ ✅ | **Правильный примитив стенки** — четыре измеренных исправления *в таком порядке*: (1) **проверка прямолинейности** — заменить `tortuosity` на СКО/хорда, порог по данным (~0.10, между 0.065 и 0.15); (2) **контур по углам вершины** — проверять нижнюю поверхность по ширине вершины и брать минимум, чтобы `gap` был нижней границей; (3) **подрезать, не отбрасывать** — оставлять самый длинный непрерывный пригодный участок вместо отмены протяжки, то есть подрезка `t0/t1`, которую `breakaway.py` просила у человека; (4) **шаг сечений как длина**, а не `samples: 14`. Всегда вертикально, без ограничения длины, подошва масштабируется по высоте. | `voron_drive_frame` при 40° получает стенку под поднятой нижней поверхностью по эскизу владельца (**прототип: 66.6 мм × 78.4 мм, отрисован**), с минимальным зазором 0.20 мм как нижней границей — диапазон ±0.05 из `check_stl.py`, сейчас ошибки 0.003–0.343 — и проходит нарезку. **Этот этап — изображение рядом с эскизом.** |
+| ~~**M5c**~~ ✅ | **Сменить режим по умолчанию с `stabilize` на стенку**, а ребро перенести в вариант `brace`, описанный при пересмотре. Пустое состояние называет собственные причины пропуска стенок. | **Готово 2026-07-29.** `buildFins` по умолчанию использует `prop`, переключатель ставит подпорку первой, а ребро называет **Распорка — защита от опрокидывания**; «экспериментально» убрано. После загрузки детали и экспорта пользователь получает вертикальную стенку. |
+| ~~**M6b**~~ ✅ | **Покрытие вместо одной стенки на область.** Связная область нависания — артефакт топологии: вся нижняя поверхность `drive_frame` — одна область 3,240 мм² с СКО 6.4 мм от любой оси, и одна стенка покрывает 46%. Заменить область→стенка на поле высот снизу → **набор** стенок с шагом `maxUnsupportedSpan`. | **Готово 2026-07-28/29**: `splitRegion` + `patchTracks` (ряды параллельных стенок). Покрытие матрицы **13% → 61%**, `drive_frame`@40 **86%**, `filter_housing`@60 **94%**, 10/16 без ошибок, **ни одной** плохой стенки; все 6 пустых результатов измерены как правильные отказы (см. состояние M6b ниже). |
+| **M7b** | Оценка и честность: `maxUnsupportedSpan` как настройка пользователя, расход пластика, панель ограничений, проверка точечной опоры (реализована), распорка как вариант. | Деталь, которой нужны 2 стенки, получает 2; которой нужны 9 — получает 9; панель называет недоступные места. |
+| **M8** | Ручное размещение и визуализация прочности: стрелка нагрузки, переключатель растяжения/изгиба, ранжированные предложения. | Деталь, отклонённую автоматикой, можно поддержать вручную; переключение растяжение↔изгиб меняет рекомендуемую ориентацию. |
+| **M9** | Фаска 2 мм и флажки разрешения, пример модели, Ko-fi, домен. | Незнакомый человек может пользоваться без объяснений. |
 
-### What the fixes were
+## Соответствие Python (2026-07-29, позже) — загрязнённый исходник, обратная проверка и раздробленная труба
 
-Three faults were stacked, each hiding the one behind it:
+Жалоба владельца — «breakaway.py делает идеальные рёбра на узлах укрытия, а это приложение
+никогда ничего подобного не делало» — была справедлива. Чтобы отреагировать на неё,
+понадобилось раскрыть три наложившиеся причины. Все исправлены в тот же день.
 
-1. **The patch frame was wrong for any leaning face.** `planes.js` built its "up the face"
-   vector from `u`'s components instead of `n`'s; the result is not even in the patch
-   plane. Correct whenever `nz = 0`, so upright fins looked perfect while a 40-degree face
-   put its tines **13.6 mm from their own wall**. That is what "tines touch their wall"
-   now gates, and it is why that check exists.
-2. **The wall was as tall as the patch's bounding box.** On a tilted part the patch is a
-   diagonal band in (u, z), so the wall shot past the face into neighbouring geometry at
-   most u values — 92 of 100 bins blocked on the hub. Height now follows the patch
-   locally, and the window is capped at `maxLen`.
-3. **`FLAT_TOL` was larger than the standoff.** At 0.5 mm a patch could bow further than
-   the fin stands off: wall 1.7 mm inside the part on one side, 45 of 78 tines fused to
-   air on the other. It is now bounded by the standoff and the tine bite.
+**1. `dev-models/hub_corner.stl` был РЕЗУЛЬТАТОМ Python-скрипта, а не деталью.**
+Его форма побайтово совпадает с `hub.py --supports` после `manifold_repair`:
+1,158 + 28 граней; тело из 28 граней — одна из собственных стенок breakaway.py,
+а вторая ОБЪЕДИНЕНА С телом детали через центральную площадку. Все когда-либо измеренные
+здесь числа hub_corner относились к детали, в которой уже были поддержки.
+**Это отменяет вчерашний вывод по `hub_corner`@0**: «язычок основания самой детали»,
+в который попадал луч, оказался расширенной подошвой встроенной стенки, а «выступ»,
+который приложение отказывалось поддерживать, находится ровно на 0.2 мм над старой
+стенкой. Приложение отказывалось поддерживать нависание, потому что поддержка Python
+уже стояла на его месте. Тестовая модель теперь чистая (`hub.py --supports off`
+и восстановление сетки, поворот в положение печати, 936 граней, одно тело).
+Обходное решение для проверки двух тел (сопроводительный `-part.stl`) остаётся:
+входные файлы из нескольких тел по-прежнему допустимы.
 
-### Settled here, worth not re-deriving
+**2. Деталь на точечной опоре при ВКЛЮЧЁННОЙ площадке стоит НА ПЛОЩАДКЕ.**
+Чистое ядро узла — сфера: 0.0 мм² контакта со столом в положении печати.
+Проверка запрещала все подпорки именно для той детали, от которой произошёл инструмент,
+хотя hub.py хорошо печатала её с площадкой и стенками. Теперь `buildFins` отклоняет
+точечную опору только при выключенной пользователем площадке; показатели сообщают,
+что площадка несущая. Это также разрешило `hub_post_foot` при 25/40/60 (покрытие
+89/96/69%; высокие стенки, стоимость которых покажет M7b, а предупреждение — уже сейчас).
 
-- **The obstruction test is a BAND, not a half-space.** "Any surface outboard of the
-  wall's inner face" blocks on the far side of every hollow — on a hub, all 52 bins, with
-  the obstruction 14-58 mm away in open air. Bounding it at the wall's outer face asks the
-  real question. It is exact rather than a heuristic: a wall box engulfed in solid with no
-  surface crossing it would require the part to be solid to the plate there, and nothing
-  extends below z = 0, so the part would have a face at z ~ 0 inside the box.
-- **Broad search, exact confirmation.** The band test stays the search primitive because
-  it is cheap enough for thousands of windows; `inside.js` then ray-parity tests the
-  finished fin and discards it if it is inside the part. The grid is built once per file
-  in the mesh's ORIGINAL frame — rotation cannot invalidate it, the same reason the weld
-  is cached — so it costs nothing per drag frame.
-- **Sites offer several ranked windows.** One buried window used to throw the whole face
-  away; `filter_housing` at 25 degrees recovers a clean fin from its second choice.
-- **Fin separation must be POSITIONAL, not just angular.** The two faces of a thin rib are
-  a perfect 180 degrees apart and sailed through the old check, giving the hub two
-  "opposite" fins **1.6 mm from each other** — one fin's bracing at two fins' cost. The
-  spec says opposite sides because torsion needs a lever arm, so `minSiteGap` enforces one.
-- **A BVH was never needed.** The roadmap expected occupancy-by-BVH to be the fix. The
-  band test removed the need for it in the search, and the confirmation pass is cheap
-  enough with a uniform grid. `three-mesh-bvh` remains unvendored.
+**3. Трубе нужна ОДНА стенка по её нижней линии, а splitRegion дробила её.**
+Порог наращивания 15° разрезает кривую полосу трубы на полосы граней, каждая со своей
+траекторией вдоль собственной оси: шесть коротких пересекающихся стенок там, где
+breakaway.py протягивает одну вдоль `tube_underside()` (отрисовано: звезда стенок
+под шаром, hub_corner@25). Теперь `tubeLine()` направляет КРИВОЛИНЕЙНЫЕ области
+(≥40% площади с отклонением >25° от средней нормали — именно доля, а не худшая грань,
+которая ошибочно перенаправила плоскость drive frame с карманами и ухудшила покрытие
+86%→34% до обнаружения; и ≥300 мм², потому что маленькие криволинейные КАРМАНЫ
+отходят от прямой хорды — измерен зазор 0.297) в одну стенку по нижней линии.
+Выборка идёт с stationStep, как в patchTracks (собственные вершины сетки давали
+6 сечений на 41 мм). Плоские области сохраняют ряды; чаши всё ещё переходят
+(кольцо извивается) к обработке участков и разбиению по отверстиям.
 
-### Honest limitations, unchanged or newly measured
+**Матрица после всех трёх исправлений (чистые модели):** 13/16 без ошибок,
+**покрытие 70%** (было 61%), систематических ошибок нет. `hub_corner`@0 —
+случай сравнения с Python — строит длинную стенку под коньковой трубой и площадку;
+нарезка даёт **68.9 см³ / 4h03m против 89.0 см³ / 5h44m** с поддержками слайсера:
+−23% пластика, −29% времени. Отрисовано рядом с эталоном hub.py (`hub_ref.png` /
+`hub_corner-0-app.png` в ~/Downloads/support-fins-renders): та же поддержка,
+полученная из геометрии вместо ручного скрипта. Оставшиеся отличия от Python понятны:
+стенка под стропилом 45° (hub.py строит *при* 45°, наш порог строго круче;
+ползунок пользователя позволяет это охватить) и несколько маленьких стенок на нижнем
+поясе сферы, которые hub.py оставляет площадке (оценка, M7b). Известный пограничный случай:
+у одной стенки `hub_post_foot`@40 зазор ~0.26 в худшей точке (мост сильнее провисает,
+сплавления нет); случайная выборка проверки меняет результат между OK и FAIL
+от запуска к запуску. Исправлять нужно измерением зазора перпендикулярно поверхности
+в `contourTop`, а не подъёмом в `settleTop`.
 
-- **`hub_corner` still finds no site at 0 and 25 degrees**, only at 40. Stabilize covers
-  what it covers; this is the ~65% ceiling that makes Draw mode (M5) core, not a fallback.
-  *(Superseded 2026-07-26: that ceiling was measured against a support needing a flat
-  face to grip. A bed-attached vertical wall has different reach, and the number must
-  be re-measured rather than carried forward. Draw is now M8.)*
-- **Every case now produces exactly ONE fin.** Once positional separation was enforced, no
-  dev model offered a genuine second site within the constraints. "Two fins, opposite
-  sides" is still the spec; the parts are not currently giving us two.
-- **Stabilize does not serve overhangs and says so.** The hub at 40 degrees leaves 8
-  regions unsupported, and PrusaSlicer independently flags "Collapsing overhang, Long
-  bridging extrusions, Floating object part, Low bed adhesion" on that export. That is the
-  honest state of a part braced but not supported — and a 46 mm fin on a 123 mm part
-  balanced on an edge is unlikely to be enough in practice.
-- **Still not test-printed.** Slicing cleanly is not the same as coming off the plate.
+**Стабилизация после всех трёх: 12/12 без ошибок** — регрессии нет.
 
-## M5 status (2026-07-26, REVISED) — Prop covers far less than was recorded
+## Состояние M6b + M5c (2026-07-29) — реализованы, все пустые результаты обоснованны
 
-Shipped behind the mode selector, labelled experimental, and not the default.
+**Все шесть пустых случаев матрицы теперь являются правильными отказами;
+каждый проверен по геометрии, а не принят на веру:**
 
-**The previous entry here was wrong, and the tooling is why.** It claimed
-"hub_post_foot gets a wall at 0 and 40 degrees" and "12/16 cases clean". Measured
-again over 4 models × 4 tilts:
+- `hub_post_foot` при **всех четырёх наклонах**: 0.0 мм² контакта со столом
+  от 0° до 165°; проверка точечной опоры отказывает до построения, интерфейс
+  предлагает повернуть деталь. (План ожидал стенку при @60; она была лесами
+  104 мм у детали, которая не может стоять, поэтому отказ лучше.)
+- `voron_drive_frame` @0 — две незначительные области в 0.5 мм над столом.
+- `hub_corner` @0 — ~~**исследовано 2026-07-29: это ограничение поддержек от стола,
+  а не пропуск.**~~ **ОТОЗВАНО в тот же день, см. «Соответствие Python» выше.**
+  «Язычок основания самой детали», в который попадал луч, оказался отламываемой
+  стенкой из `hub.py --supports`, встроенной в тестовую модель. На чистой детали
+  строится стенка под коньковой трубой; это главный пример соответствия Python.
+  (Наблюдение о шагах проверки ниже остаётся верным: `stationIsClear` никогда
+  не смотрит ниже z≈1.4, а низкие препятствия у подошвы ловит `stationCertified`.)
+- **Повторное построение с узкой подошвой попробовали и ОТКАТИЛИ — не исследовать заново.**
+  Гипотеза: при `hub_corner`@0 пересекается только расширенная подошва (проверки
+  не проходили при o=±3.3, z=1.25, в полосе расширения). Передача `footCap`
+  через `stationIsClear`/`stationCertified`/`sweep` и повтор неудачных стенок
+  при `footMin` не изменили **ничего во всей матрице**: язычок лежит под всей
+  площадью стенки, а не только расширением. Сложность, не спасающая ни одного
+  случая, не включается в продукт.
 
-| | cases |
-|---|---|
-| produced a clean support | **3 / 16** |
-| built something that failed | 2 |
-| **built nothing at all** | **11** |
+**M5c завершён в тот же день:** `buildFins` по умолчанию использует `prop`,
+`app.js` начинает с `prop`, переключатель показывает «Подпорка — поддержать каждое
+нависание» / «Распорка — защита от опрокидывания», пометка «экспериментально» убрана.
+Стабилизация повторно проверена после смены: 11/12 без ошибок, 0 с ошибками,
+покрытие 5% — регрессии нет; измеренный разрыв 5% против 61% обосновывает смену.
 
-hub_post_foot gets **zero props at 0, 20, 25, 30, 40 and 50 degrees**; only at 60.
-For comparison, Stabilize over 4 models × 3 tilts is 8 clean / 0 failed / 4 empty.
+**Непроверенное утверждение теперь проверено в обеих частях (2026-07-29).**
+Одинаковые экспорт и ориентация, настройки PrusaSlicer 2.9.6 по умолчанию;
+встроенные стенки против чистой детали с поддержками слайсера (только от стола,
+в соответствии с нашим ограничением):
 
-### Two measurement faults manufactured that number
-
-- **`check_stl.py` counted empty output as clean.** `if m is None: return True` —
-  a case where the tool built nothing scored exactly like a case where it built a
-  good support. 11 of the 16 "passes" were nothing at all. Empty is now its own
-  bucket: it is a coverage failure, just not a correctness one.
-- **Prop's skip reasons were thrown away before anything could read them.**
-  `buildFins` squashed `skipped` onto the stabilize-shaped `rejected` object,
-  which keeps only `blocked`. So `verify_fins.js` printed `blocked: 0` for
-  hub_post_foot at 0 degrees when the real reason was `buried: 1`, and the UI's
-  empty state read the same lossy object. Whatever explains a failure has to
-  survive the trip to the UI. Prop's own counters are now passed through intact.
-
-### Root cause on the hub post: it is a bowl, and Prop sweeps a line
-
-hub_post_foot's overhang is the underside of the **ball hub** — a bowl, not a
-ledge. The XY covariance of its lowest points is nearly isotropic (1.0 would be a
-perfect circle):
-
-| tilt | 0° | 25° | 40° | 60° |
+| случай | встроенные стенки | поддержки слайсера | пластик | время |
 |---|---|---|---|---|
-| anisotropy | 1.08 | 1.03 | 1.31 | 36.1 |
-| props built | 0 | 0 | 0 | 1 |
+| `drive_frame` @40 | 26.1 см³ · 2h58m | 48.5 см³ · 4h17m | **−46%** | **−31%** |
+| `filter_housing` @25 | 76.8 см³ · 6h38m | 125.8 см³ · 10h03m | **−39%** | **−34%** |
+| `hub_corner` @25 *(повторно измерено на чистой детали)* | 75.0 см³ · 4h59m | 88.2 см³ · 5h50m | **−15%** | **−15%** |
+| `hub_corner` @0 *(положение печати, сравнение с Python)* | 68.9 см³ · 4h03m | 89.0 см³ · 5h44m | **−23%** | **−29%** |
 
-`contactLine` takes the principal axis of that point set — which is noise — and
-buckets along it, so the "contact line" alternates between the two sides of the
-ring, wandering **2.4× its own chord and up to 16mm off it**. The swept wall then
-saws through the part and is correctly binned by `insidePart`. The one tilt that
-works is the one tilt where a line actually exists.
+**При каждом использовании чисел указывайте оговорку:** поддержки слайсера покрывают
+100% нависаний; стенки в этих случаях покрыли 86% / 71% / 61% / 44%.
+Часть экономии — покрытие, которое стенки намеренно не обеспечивают: короткие пролёты
+меньше `maxUnsupportedSpan`, хорошо печатающиеся мостами, и отказы.
+Это задумано: поддерживать только нужное. Но честная формулировка — «меньше пластика
+отчасти потому, что намеренно поддерживается меньше».
 
-`breakaway.py` states the precondition in its own docstring — *"the contact line
-is assumed ~straight (a linear overhang)"* — and the port inherited the sweep
-without it. `PROP.maxTortuosity` now enforces it and reports `notALine`.
+## Состояние M5a + M5b (2026-07-28) — реализованы
 
-### The 13mm wall was never real
+**M5a находится в `check_stl.py`.** `coverage()` сообщает процент ПЛОЩАДИ нависаний
+в пределах `MAX_UNSUPPORTED_SPAN` (12 мм) от поддержки по каждому случаю и суммарно
+по матрице. Точка считается поддержанной, только если геометрия поддержки близка
+по XY *и* примерно на той же высоте. Без проверки высоты расширенная подошва
+«поддерживает» любое нависание, возле которого оказалась на виде сверху.
+Первым измерено число, которого проекту не хватало больше всего:
 
-The previous entry blamed "its path falls outside that region's own triangles, so
-`surfaceZAt` finds nothing above it". That is not what happened. **`hub_corner.stl`
-is a two-body mesh** (1158 faces + a separate 28-face solid), and `check_stl.py`
-took `sorted(bodies)[0]` — the largest — as "the part". A prop correctly stopping
-0.2mm under the *smaller* body was measured against the larger one and reported a
-13.4mm gap. `verify_fins.js` now writes a `-part.stl` sidecar so the checker never
-has to guess which solid is the part; that prop measures 0.2mm.
+| режим | без ошибок | покрытие нависаний |
+|---|---|---|
+| Стабилизация (ребро) | 8/12 | **4%** |
+| Подпорка (стенка) | 8/16 | **13%** |
 
-### The sub-spec gaps have an exact cause
+Ребро никогда не было подпоркой. Теперь это измерено, а не обсуждается на словах.
 
-The "0.11–0.19mm where 0.2 was intended" family was filed as unexplained
-imprecision. It is geometric: **the wall's top is a 0.6mm-wide flat, and the gap
-is set at its centreline.** On a sloped underside the up-slope corner rises by
-`half_tip × slope` into the gap. On hub_corner at 25°, serving a ledge of slope
-0.466: `0.2 − 0.3×0.466 ≈ 0.06`, and the two top corners measure **0.056 and
-0.306** against a 0.2 spec — the pair straddling the intended gap is the
-signature. voron_drive_frame at 60° fails the same way and worse, its nearest top
-vertex sitting **0.009mm** off the part, which is a weld. Fix is to drop `top` by
-`half_tip × local slope` (or measure the gap perpendicular to the surface) — not
-yet done, and it is the reason Prop stays experimental.
+`check_props` также перестала смешивать два разных просвета. Зазор для отламывания
+(от верха стенки до детали сверху, должен быть 0.2) и боковой просвет (от боков
+стенки до чего-либо рядом, нужно лишь исключить сплавление) были одним числом.
+Из-за этого отклонялись стенки с правильно отстоящими боками. Теперь они различаются
+по положению ближайшей поверхности детали относительно точки выборки,
+а не по параметризации стенки.
 
-### A part balanced on a point cannot be supported at all
+**M5b находится в `prop.js`**: все четыре исправления и ещё два, продиктованные измерениями:
 
-The finding that actually explains the hub post. **hub_post_foot has 0.0 mm² of
-bed contact at every tilt from 0 to 165 degrees** — it stands on the tip of its
-own tapered foot — and 574 mm² only when flipped 180°. Every overhang on it
-therefore sits 70–100mm in the air, so even a geometrically valid prop is a
-1.2mm-thick wall 70–104mm tall: the same "12–103mm scaffold" failure M3 already
-identified, reappearing in M5.
+| | изменение | причина |
+|---|---|---|
+| 1 | `straightness()` вместо `tortuosity()` | старая проверка измеряла выборку |
+| 2 | `contourTop()` | верхний по склону угол вершины заглублялся при уклоне больше 33.7° |
+| 3 | `longestRun()` и подрезка | одно короткое сечение отбрасывало стенку 92 мм |
+| 4 | `stationStep` (мм) вместо `samples` (количество) | отсутствие учёта масштаба, как у прежнего `foot: 7.0` |
+| 5 | `stationIsClear` проверяет всю высоту снаружи | оба оставшихся сплавления были на боку, выше последней проверки |
+| 6 | `settleTop()` | замыкает цикл: измерить готовую кромку, опустить до требуемого зазора |
 
-Both modes used to answer with a local reason ("no flat face", "part in the way")
-that sent the user off tuning something that was never the problem. `seatingOf`
-now classifies the part as sitting on a **face, an edge, or a point**, and the
-point case outranks every mode-specific message. An edge must not trip it — that
-is the flagship Stabilize case — so the discriminator is the footprint's extent,
-not its area.
+**#6 стоит сохранить, чтобы не выводить заново.** Генератор подтверждает результат
+по отдельным точкам, а проверка измеряет точное расстояние между поверхностями;
+никакое уплотнение выборки не заставит их совпасть. Эта погоня породила семейство
+«0.11–0.19 вместо 0.2», сопровождавшее план два этапа. Измерьте готовую верхнюю
+кромку, затем переместите её. Два свойства пришлось выучить на ошибках:
+нужно **только опускать** (подъём по данным одной области приварил стенку к невидимой
+геометрии: матрица упала с 6 успешных до 0, зазоры 0.002 мм) и делать это
+**для каждого сечения** (глобальный сдвиг позволил одному низкому треугольнику
+опустить всю стенку на 0.48 мм ниже детали, слишком далеко для опирания).
 
-**The lesson that generalises.** M3 was called "validated — 14 closed solids, all
-watertight". Every one of those solids was wound INSIDE OUT: euler 2, no boundary
-edges, consistent winding, and negative volume. The check asked `is_watertight`
-and never asked `is_volume`. A slicer would have read the lot as holes. Retiring
-M3 for the wrong reason hid that for three milestones. **M5 repeated the shape of
-that mistake**: a pass rate that counted absence of output as success, and a
-diagnostic channel that could not express its own failure mode. When a milestone
-reports better than it looks on screen, suspect the scoreboard.
+Результат: зазоры для отламывания теперь **0.15–0.22 мм** при требовании 0.2;
+все стенки вертикальны и стоят на z = 0, а главный `voron_drive_frame` получает
+стенку по эскизу владельца. Отрисовано и просмотрено. Стабилизация осталась
+на 8/12, регрессий нет.
 
-**Next on this, in order:**
-1. Drop the wall top by `half_tip × local slope` so the breakaway gap is a floor.
-2. Trim the contact line to its longest clear run instead of discarding the whole
-   prop — `breakaway.py` takes `t0,t1` and tells the caller to *"pick t0 so
-   contact(t0) has already cleared any solid the wall must NOT weld to"*; a human
-   does that trim by hand and the port never automated it. Prototyped: it yields
-   an unburied wall on hub_post_foot at 0/25/40 where there are currently none.
-   Pair it with a height/plastic cap or it will just emit those scaffolds.
-3. A point-prop (tapered column) for bowl overhangs, which is what a ball hub's
-   underside actually wants. That is a third support type, not a Prop setting.
+**Честно о нерешённом:** покрытие 13%. Шесть из шестнадцати случаев ничего не строят;
+почти вся причина теперь — проверка прямолинейности, отклоняющая действительно
+изогнутые области. Это задача M6b: разделить область, а не ослабить проверку.
+По той же причине `stationStep` равен 1.0, а не 2.0: при 2.0 матрица даёт
+8 успешных / **2 стенки, которые приварятся** / покрытие 18%; при 1.0 —
+8-9 успешных / **ни одной** плохой стенки / 13%. Покрытие — следующий этап;
+спаянная поддержка — испорченный отпечаток.
 
-## Decisions still open
+**Метрика покрытия должна появиться в проверке до M5b, а не после.** Это M5a выше,
+уже прототипированный и измеренный, а не только описанный. Ничто в `check_stl.py`
+никогда не спрашивало, *держит ли поддержка хоть что-то*: только чистое ли тело,
+снаружи ли детали и верно ли расстояние. Распорка 4.5 мм под 3,403 мм² нависаний
+проходит все эти проверки. Новая проверка — **«% площади нависаний в пределах
+`maxUnsupportedSpan` от поддержки»** — поймала бы это в первый день.
+Тот же урок, что вчерашнее «пустое считалось успешным», уровнем выше:
+*система оценки должна измерять то, что действительно нужно*.
 
-- **Name + domain.** Product is Support Fins; the domain isn't bought.
-- ~~**The "faster" claim is unverified**~~ **Verified 2026-07-29** — see the
-  M6b + M5c status table: 19–46% less plastic AND 13–34% faster than
-  PrusaSlicer's own buildplate-only supports at the same orientation, with the
-  coverage caveat stated there. The tipping-raises-Z concern is a *different*
-  comparison (tilted-with-walls vs. flat-with-supports) and still unmeasured;
-  don't conflate them in a script.
-- **Auto-orientation solver** stays out of v1 by design.
+**Опорная площадка остаётся ранней задачей.** Почти у любой наклонённой детали
+контакт со столом ≈ 0: она стоит на ребре, и без площадки нечего пробовать печатать.
+Нижняя фаска 2 мм остаётся поздней: она меняет *геометрию самого пользователя*,
+а не добавляет тело рядом, поэтому не может выйти раньше интерфейса запроса разрешения.
 
-## Explicitly deferred
+**«M3 никогда не выпускается» было ошибкой вдвойне.** От него отказались, потому что
+стенка без перемычек «удерживает деталь только в одном направлении», ссылаясь на куб
+Slant3D, упавший от такой поддержки. Но там деталь балансирует на РЕБРЕ и поддержка —
+её единственное крепление. Стенка под нависанием детали, которая и так стоит,
+удерживает её за счёт силы тяжести. В `breakaway.py` вообще нет перемычек,
+и она дала хорошие поддержки на реально напечатанных узлах укрытия.
+Стенка без перемычек от стола теперь **основной** примитив; геометрия M3,
+если не считать незамеченного обратного обхода граней, была ближе к правильной,
+чем пришедшая ей на смену.
 
-3MF / OBJ input · overhangs that sit over the part rather than the plate · mobile layout
-(desktop-recommended notice instead) · any analytics · accounts, cloud, sharing.
+**Вывод о «13 рёбрах» тоже прочли неверно.** На раме Voron, стоящей на ребре,
+наивное размещение даёт стенку под каждой из 13 пригодных областей: высота 12–103 мм
+при детали 116 мм. План назвал их *«стенками-лесами во всю высоту, которые потратят
+больше пластика, чем заменяемые поддержки слайсера»*. **Такого сравнения не проводили.**
+Стенка 1.2 мм — самая тонкая возможная поддержка, основное обещание продукта.
+Правильный ответ на «13 — слишком много» — *меньше стенок*, а не *меньшие стенки*.
+Второе прочтение и породило `maxLen: 25` и распорку 4.5 мм под 3,403 мм² нависаний.
+
+Поэтому размещение — **не режим и не догадка о намерениях**. Это критерий покрытия:
+*ни одна точка нависания не должна быть дальше `maxUnsupportedSpan` от поддержки*.
+Количество получается из геометрии: нужны 2 — получит 2, нужны 9 — получит 9.
+Настройка доступна пользователю, а не угадывается программой.
+**Прежде чем задать `maxUnsupportedSpan` по умолчанию, измерьте пластик обоими
+способами** (стенки против поддержек слайсера), чтобы основное обещание проекта
+наконец стало числом.
+
+---

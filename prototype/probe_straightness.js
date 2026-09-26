@@ -46,10 +46,10 @@ for(const [ri,region] of res.regions.entries()){
   const out=[];
   for(const n of [8,14,24,48,96]){
     const line=contactLine(pts,tris,n);
-    if(!line){out.push(`${n}:none`);continue;}
+    if(!line){out.push(`${n}:нет`);continue;}
     const s=straightness(line);
-    out.push(`${String(n).padStart(3)}: arc/chord ${arcOverChord(line).toFixed(2)}  rms ${s.rms.toFixed(2)}mm  ratio ${s.ratio.toFixed(3)}  shipped ${shipped(line).toFixed(3)}`);
+    out.push(`${String(n).padStart(3)}: дуга/хорда ${arcOverChord(line).toFixed(2)}  rms ${s.rms.toFixed(2)} мм  отношение ${s.ratio.toFixed(3)}  текущая версия ${shipped(line).toFixed(3)}`);
   }
-  console.log(`  R${ri} area ${region.area.toFixed(0)}mm2`);
+  console.log(`  R${ri} площадь ${region.area.toFixed(0)} мм2`);
   for(const o of out) console.log(`      ${o}`);
 }

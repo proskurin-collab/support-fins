@@ -98,17 +98,17 @@ def main(src, dst):
         rms = straightness(line)
         fins.append((w, rms))
 
-    print(f"[spike] {src.split('/')[-1]}: {len(regions)} regions -> {len(fins)} fins, "
-          f"skipped {skipped}")
+    print(f"[spike] {src.split('/')[-1]}: {len(regions)} областей -> {len(fins)} рёбер, "
+          f"пропущено {skipped}")
     if fins:
         rmss = [r for _, r in fins]
-        print(f"[spike] contact-line RMS served: min {min(rmss):.2f} "
-              f"max {max(rmss):.2f} mm (2-section wall could only do <=0.8)")
+        print(f"[spike] СКО обслуженных линий контакта: мин. {min(rmss):.2f} "
+              f"макс. {max(rmss):.2f} мм (стенка из 2 сечений допускает только <=0.8)")
         bad = [w for w, _ in fins if not w.is_watertight]
-        print(f"[spike] fin solids watertight: {len(fins)-len(bad)}/{len(fins)}")
+        print(f"[spike] замкнутых тел рёбер: {len(fins)-len(bad)}/{len(fins)}")
         out = trimesh.util.concatenate([mesh] + [w for w, _ in fins])
         out.export(dst)
-        print(f"[spike] wrote {dst}  bbox {np.round(out.extents,1)}")
+        print(f"[spike] записан {dst}  габариты {np.round(out.extents,1)}")
     return len(regions), len(fins)
 
 

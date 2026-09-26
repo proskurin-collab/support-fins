@@ -155,7 +155,7 @@ Deno.test('sway: a brace facing another across a channel is refused, a staggered
   const first = sway.swayAtFace(topo, res, ID, inA, [0, -20, 60], opts);
   assert(first.ok, `first brace failed: ${first.reason}`);
   const across = sway.swayAtFace(topo, res, ID, inB, [0, 20, 60], opts, [first]);
-  assert(!across.ok && /run into another brace/.test(across.reason),
+  assert(!across.ok && /пересечётся с другой распоркой/.test(across.reason),
          `a brace straight across the channel was not refused (${across.ok ? 'built' : across.reason})`);
   const staggered = sway.swayAtFace(topo, res, ID, inB, [20, 20, 60], opts, [first]);
   assert(staggered.ok, `a staggered brace was refused: ${staggered.reason}`);
@@ -224,7 +224,7 @@ Deno.test('sway: a brace never lands on a support that is already there', () => 
   assert(sway.swayClashesWall(first, [alongTheFoot]), 'a wall on its own foot did not read as a clash');
 
   const blocked = sway.swayAtFace(topo, res, ID, side, [0, -15, 60], opts, { walls: [alongTheFoot] });
-  assert(!blocked.ok && /would fuse/.test(blocked.reason),
+  assert(!blocked.ok && /сплавятся/.test(blocked.reason),
          `a brace on top of a wall was not refused (${blocked.ok ? 'built' : blocked.reason})`);
 
   // ...and a wall well away from the face leaves placement alone.
@@ -262,7 +262,7 @@ Deno.test('sway: auto refuses a stilt, a hand-placed brace builds one and report
   // ...and the same call can still be held to Auto's rule when asked.
   const strict = sway.swayAtFace(topo, res, ID, side, [0, -15, 110],
                                  { tines: true, layerHeight: LAYER, allowStilt: false });
-  assert(!strict.ok && /holding nothing/.test(strict.reason),
+  assert(!strict.ok && /без фиксации/.test(strict.reason),
          `allowStilt:false did not refuse (${strict.ok ? 'built' : strict.reason})`);
 });
 

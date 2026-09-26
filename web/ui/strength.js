@@ -232,8 +232,8 @@ el('load-suggest').addEventListener('click', () => {
   const cur = loadAlignment([w.x, w.y, w.z]);
   const note = el('load-note');
   if (!pose || (cur && pose.cross >= cur.cross - 0.05)) {
-    note.textContent = 'This is about the strongest printable orientation for this '
-      + 'load — a better-aligned pose wouldn’t sit on the bed.';
+    note.textContent = 'Это практически самая прочная пригодная для печати ориентация при этой '
+      + 'нагрузке — при более выгодном направлении слоёв деталь не устоит на печатном столе.';
     note.className = `load-verdict ${cur ? cur.quality : 'mixed'}`;
     note.hidden = false;
     el('load-suggest').hidden = true;

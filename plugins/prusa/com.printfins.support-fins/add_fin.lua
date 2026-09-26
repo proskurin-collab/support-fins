@@ -24,14 +24,14 @@
 info = {
     id = "support_fins_add_fin",
     type = "project.plugin",
-    title = "Add a Fin",
-    menu = "Support Fins/Add a Fin",
+    title = "Добавить ребро поддержки",
+    menu = "Support Fins/Добавить ребро поддержки",
     params = {
-        {name = "fin_height",     label = "Fin Height [mm]",  type = "float", default = 25},
-        {name = "length",         label = "Fin Length [mm]",  type = "float", default = 15},
-        {name = "wall_thickness", label = "Fin Wall [mm]",    type = "float", default = 1.2},
-        {name = "foot_width",     label = "Fin Foot [mm]",    type = "float", default = 7},
-        {name = "tines",          label = "Gripping Tines",   type = "bool",  default = true}
+        {name = "fin_height",     label = "Высота ребра [мм]",  type = "float", default = 25},
+        {name = "length",         label = "Длина ребра [мм]",  type = "float", default = 15},
+        {name = "wall_thickness", label = "Толщина стенки [мм]",    type = "float", default = 1.2},
+        {name = "foot_width",     label = "Ширина основания [мм]",    type = "float", default = 7},
+        {name = "tines",          label = "Соединительные перемычки",   type = "bool",  default = true}
     }
 }
 

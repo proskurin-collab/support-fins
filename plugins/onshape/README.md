@@ -1,122 +1,125 @@
-# Support Fins — Onshape FeatureScript
+# Support Fins — FeatureScript для Onshape
 
-A native **Onshape custom feature** that adds Support Fins' designed-in breakaway supports
-to a part inside a Part Studio. It's a companion to [printfins.com](https://printfins.com):
-same fins, same spec ([`docs/FIN-SPEC.md`](../../docs/FIN-SPEC.md)), but it runs on the CAD
-model itself instead of an STL.
+Нативная **пользовательская операция Onshape**, которая добавляет встроенные отламываемые
+рёбра поддержки Support Fins к детали в Part Studio. Дополнение к
+[printfins.com](https://printfins.com): те же рёбра и та же спецификация
+([`docs/FIN-SPEC.md`](../../docs/FIN-SPEC.md)), но работа ведётся с CAD-моделью, а не STL.
 
-**Public Onshape document:**
+**Общедоступный документ Onshape:**
 [Fin Supports, V1](https://cad.onshape.com/documents/607917e8e297a68eb42cfb58/v/629a9559ea2972f32e386d1a/e/0875000cbc033d203bb4c861)
-([latest workspace](https://cad.onshape.com/documents/607917e8e297a68eb42cfb58))
+([актуальная рабочая область](https://cad.onshape.com/documents/607917e8e297a68eb42cfb58))
 
-## What it does
+## Что делает операция
 
-Orient the part the way it will print, select it, and the feature adds the supports as new
-parts beside it (the original part is never modified):
+Расположите деталь как при печати и выберите её. Операция добавит поддержки как новые
+детали рядом с исходной (исходная деталь не изменяется):
 
-- **Overhang ribs.** Upside-down-T walls under each overhang. The rib top follows the
-  underside a breakaway gap below it, necks to a 0.6 mm contact tip, and carries a comb of
-  one-layer horizontal tines that fuse into the part. This is the web app's current default
-  support.
-- **Side bracing fins.** Round-topped walls standing a gap off a flat side of a part tipped
-  onto an edge or corner, gripping it with rows of tines (the `fins.js` geometry). Off by
-  default. Auto picks up to N faces facing apart, or you select the faces.
-- **Bed pad.** A thin oval under a part that touches the bed only along an edge or at a
-  point, the same height as the rib flanges so the two merge flush.
+- **Рёбра под нависаниями.** Стенки в форме перевёрнутой T под каждым нависанием.
+  Верх повторяет нижнюю поверхность с зазором для отламывания, сужается до контактной
+  кромки 0.6 мм и несёт гребёнку горизонтальных соединительных перемычек высотой в один
+  слой, сплавляющихся с деталью. Это текущий тип поддержки по умолчанию в веб-приложении.
+- **Боковые рёбра поддержки.** Стенки с округлым верхом стоят с зазором у плоской стороны
+  детали, наклонённой на ребро или угол, и удерживают её рядами перемычек (геометрия
+  `fins.js`). По умолчанию выключены. Авто выбирает до N граней, направленных в разные
+  стороны; также грани можно выбрать вручную.
+- **Опорная площадка.** Тонкий овал под деталью, которая касается стола только ребром
+  или точкой. Имеет высоту полок рёбер, поэтому они соединяются без ступеньки.
 
-Export the part together with its supports as **one STL** and slice with supports off, the
-same as a printfins.com export.
+Экспортируйте деталь вместе с поддержками в **один STL** и нарезайте с выключенными
+поддержками, как при экспорте с printfins.com.
 
-## Why a FeatureScript
+## Зачем нужен FeatureScript
 
-The web app has to work on triangle soup, so most of its engine is mesh plumbing: welding
-vertices, rebuilding adjacency, inside/outside tests, hand-built watertight solids. Onshape has
-a B-rep kernel, which removes most of that:
+Веб-приложение работает с набором треугольников, поэтому большая часть движка обслуживает
+сетку: сшивает вершины, восстанавливает смежность, проверяет положение внутри/снаружи,
+строит замкнутые тела вручную. Ядро B-rep в Onshape устраняет большую часть этой работы:
 
-| printfins.com (mesh) | This feature (B-rep) |
+| printfins.com (сетка) | Эта операция (B-rep) |
 |---|---|
-| Reorient the part, re-seat it on the plate | Pick a build plate (plane, face or mate connector); nothing moves |
-| Overhang test per triangle | Overhang test per face against the build direction |
-| Contour the rib top by sampling the mesh (`contourTop`, `settleTop`, …) | Sample the underside with kernel raycasts, then **subtract a copy of the part grown by the gap**, so the gap holds everywhere, including the flanks |
-| Point-in-mesh parity tests | `qContainsPoint`, `evDistance`, booleans |
-| Emit closed triangle solids | Sketch + extrude real solids; the slicer unions them with the part |
+| Переориентация детали и повторная установка на стол | Выбор стола (плоскость, грань или соединитель сопряжения); ничего не перемещается |
+| Проверка нависания каждого треугольника | Проверка каждой грани относительно направления печати |
+| Построение верха ребра по выборкам сетки (`contourTop`, `settleTop`, …) | Выборки нижней поверхности лучами ядра, затем **вычитание копии детали, расширенной на зазор**, чтобы выдержать зазор везде, включая боковые стороны |
+| Проверки чётности пересечений для точки внутри сетки | `qContainsPoint`, `evDistance`, булевы операции |
+| Выдача замкнутых тел из треугольников | Эскиз и выдавливание настоящих тел; слайсер объединяет их с деталью |
 
-It also covers issues [#24](https://github.com/gittrahan/support-fins/issues/24) and
-[#25](https://github.com/gittrahan/support-fins/issues/25) (STEP support): anything Onshape
-imports as a solid (STEP, Parasolid, native parts) works.
+Решаются также задачи [#24](https://github.com/gittrahan/support-fins/issues/24) и
+[#25](https://github.com/gittrahan/support-fins/issues/25) (поддержка STEP): подходит всё,
+что Onshape импортирует как твёрдое тело (STEP, Parasolid, собственные детали).
 
-## Install
+## Установка
 
-1. Open the public document above.
-2. In any Part Studio: toolbar **Custom features** → **Add custom features** → find the
-   **Fin Supports** document → add **Support-Fins FS**.
-3. Onshape pins your Part Studios to that version. When a new version is published, Onshape
-   offers the update.
+1. Откройте общедоступный документ выше.
+2. В любом Part Studio: **Пользовательские операции (Custom features)** на панели →
+   **Добавить пользовательские операции (Add custom features)** → документ
+   **Fin Supports** → добавьте **Support-Fins FS**.
+3. Onshape закрепит эту версию за вашими Part Studio. После публикации новой версии
+   Onshape предложит обновление.
 
-To work on the code instead, make a copy of the document, or paste
-[`supportFins.fs`](supportFins.fs) into a new Feature Studio. The icon is
-[`supportFins-icon.svg`](supportFins-icon.svg): upload it to the document and point the
-`icon::import(...)` line at it.
+Для работы с кодом скопируйте документ или вставьте
+[`supportFins.fs`](supportFins.fs) в новый Feature Studio. Значок —
+[`supportFins-icon.svg`](supportFins-icon.svg): загрузите его в документ и укажите в строке
+`icon::import(...)`.
 
-## Use
+## Использование
 
-1. Orient the part for printing (for example with a **Transform** feature). The Top plane is
-   the build plate unless you pick another.
-2. **Support-Fins FS** → select the part.
-3. **Print settings** → set **Layer height** to the slicer's layer height (each tine is one
-   layer, snapped to the layer grid) and pick **PLA** or **PETG** (the `MATERIAL` profiles
-   from `web/app.js`).
-4. Optionally turn on **Side bracing fins** for a part balanced on an edge or corner.
-5. Select the part and all its orange supports → **Export** → STL, as one file.
+1. Ориентируйте деталь для печати (например, операцией **Преобразование (Transform)**).
+   Плоскость Top служит печатным столом, если не выбрать другую.
+2. **Support-Fins FS** → выберите деталь.
+3. **Настройки печати** → задайте **Высоту слоя** из слайсера (каждая перемычка занимает
+   один слой и совмещена с сеткой слоёв), выберите **PLA** или **PETG** (профили `MATERIAL`
+   из `web/app.js`).
+4. При необходимости включите **Боковые рёбра поддержки** для детали на ребре или углу.
+5. Выберите деталь и все её оранжевые поддержки → **Экспорт (Export)** → STL, одним файлом.
 
-Every option has a hover tooltip. The full manual, with diagrams, the options, a
-troubleshooting table for every message the feature reports, and printing tips, is
+У каждого параметра есть подсказка при наведении. Полное руководство со схемами,
+параметрами, таблицей устранения проблем для всех сообщений операции и советами по печати:
 [`SupportFins_User_Guide.pdf`](SupportFins_User_Guide.pdf).
 
-## Port notes
+## Особенности переноса
 
-Geometry and constants follow the web engine and `FIN-SPEC.md`. Where this port differs:
+Геометрия и константы соответствуют веб-движку и `FIN-SPEC.md`. Отличия этой версии:
 
-- **Placement rules are a subset.** Ported: 45° overhang test with a small slack on the
-  threshold, 12 mm² minimum region, ribs running down-slope (or along the long axis when
-  flat), rows at the max-unsupported-span pitch, a single rib on the lowest line of a large
-  curved band, squat walls with a brim, edge-biased tine spacing with a 3-tine grip floor,
-  and the side fin's 60° / 12 mm site separation. **Not ported:** `splitRegion`
-  sub-patching, `withLowTails`, part-attached ("floor") supports, sway braces, wall cutouts
-  and orientation scoring. The feature never picks the orientation; that stays the user's
-  call, as on the site.
-- **The rib tip steps rather than tapers.** The tip is a 0.6 mm wall over the top 1.5 mm of
-  a 1.0 mm stem, instead of `profileHalf`'s linear neck.
-- **One base height.** Rib flanges, squat-wall brims and the pad share one height
-  (PLA 0.6 mm, PETG 0.4 mm, rounded to whole layers), so they meet without a step. Side-fin
-  bases stay at the spec's 1 mm.
-- **Side fins are sized to the face outline.** The fin rises only as high as the face
-  reaches across its whole length, so a tilted square face (a diamond) gets a fin in the
-  middle rather than a plank beside a corner.
-- **Supports are separate parts.** Nothing is booleaned into the user's part. The tines and
-  pad overlap it slightly, exactly as the web export does, and the slicer unions them.
+- **Перенесена часть правил размещения.** Есть: порог нависания 45° с небольшим допуском,
+  минимальная область 12 мм², рёбра вдоль склона (или длинной оси плоской поверхности),
+  ряды с шагом максимального пролёта без поддержки, одно ребро под нижней линией большой
+  криволинейной полосы, низкие стенки с каймой, более плотные перемычки по краям и минимум
+  3 удерживающие перемычки, разделение боковых рёбер на 60° / 12 мм. **Не перенесены:**
+  разбиение `splitRegion`, `withLowTails`, поддержки с опорой на деталь («пол»),
+  стабилизирующие распорки, вырезы в стенках и оценка ориентации. Как и на сайте,
+  ориентацию всегда выбирает пользователь.
+- **Верх ребра сужается ступенькой.** Кромка — стенка 0.6 мм высотой 1.5 мм над стенкой
+  1.0 мм, вместо линейного сужения `profileHalf`.
+- **Единая высота основания.** Полки рёбер, каймы низких стенок и площадка имеют одну
+  высоту (PLA 0.6 мм, PETG 0.4 мм, с округлением до целых слоёв) и соединяются без ступеньки.
+  Основания боковых рёбер сохраняют предусмотренный спецификацией 1 мм.
+- **Размер боковых рёбер определяется контуром грани.** Ребро поднимается только до высоты,
+  доступной по всей его длине. Наклонённая квадратная грань (ромб) получает ребро в середине,
+  а не стенку рядом с углом.
+- **Поддержки — отдельные детали.** Булевы операции не изменяют деталь пользователя.
+  Перемычки и площадка слегка пересекают её, как при веб-экспорте; слайсер объединяет их.
 
-## Limits
+## Ограничения
 
-- **Solid parts only.** STL and other meshes import into Onshape as mesh bodies, which the
-  feature can't process. For STLs, use printfins.com.
-- Overhangs over another part of the model rather than over the plate get no rib, the same
-  as the web app. Use **Add overhang faces** to force one.
-- Side fins need a flat face at least 4 × 4 mm, leaning no more than the Max face lean
-  (default 45°) from vertical, with open space beside it.
-- Very complex parts with large curved overhangs can take a few seconds to regenerate.
+- **Только твёрдые тела.** STL и другие сетки импортируются в Onshape как сеточные тела,
+  которые операция обработать не может. Для STL используйте printfins.com.
+- Нависания над другим участком модели, а не над столом, не получают рёбер, как и в
+  веб-приложении. Используйте **Добавить нависающие грани**, чтобы создать ребро принудительно.
+- Боковому ребру нужна плоская грань не меньше 4 × 4 мм, наклонённая от вертикали не больше
+  **Макс. наклона грани** (по умолчанию 45°), со свободным пространством рядом.
+- Перестроение очень сложных деталей с большими криволинейными нависаниями может занять
+  несколько секунд.
 
-## Status
+## Состояние
 
-Runs in Onshape (FeatureScript 2931) on test parts, including a tilted cube and a complex
-part with curved overhangs. **Not yet print-tested:** the geometry follows `FIN-SPEC.md`,
-but nothing generated by this feature has been sliced and printed yet. Reports from real
-prints are welcome.
+Работает в Onshape (FeatureScript 2931) на тестовых деталях, включая наклонённый куб и
+сложную деталь с криволинейными нависаниями. **Ещё не проверено печатью:** геометрия
+соответствует `FIN-SPEC.md`, но результат этой операции пока не нарезался и не печатался.
+Будем рады отчётам о реальной печати.
 
-## Credits
+## Авторы
 
-Fin technique by Slant3D; engine, spec and constants from this repo by Matthew Trahan.
-FeatureScript port by Chris Lee, Southeast Expedition Medical, LLC. MIT License, same as the
-rest of the repo.
+Техника рёбер — Slant3D; движок, спецификация и константы этого репозитория — Matthew Trahan.
+Перенос на FeatureScript — Chris Lee, Southeast Expedition Medical, LLC. Лицензия MIT,
+как и для остального репозитория.
 
-Claude Code (Opus 5.5) used to simplify the porting process and write much of the FeatureScript code.
+Claude Code (Opus 5.5) использовался для упрощения переноса и написания значительной части кода FeatureScript.
