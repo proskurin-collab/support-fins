@@ -214,7 +214,7 @@ const TEMPLATES = [
   { pattern: /^(?=\d+ (?:support fins?|props?|drawn|sway braces?))(.*)$/, replace: ([, value]) => value
     .replace(/(\d+) support fins?/g, 'рёбер поддержки: $1')
     .replace(/(\d+) props?/g, 'подпорок: $1')
-    .replace(/(\d+) drawn walls?/g, 'стенок вручную: $1')
+    .replace(/(\d+) drawn(?: walls?)?/g, 'стенок вручную: $1')
     .replace(/(\d+) sway braces?/g, 'стабилизирующих распорок: $1')
     .replace(/(\d+) brace tines/g, 'перемычек распорок: $1')
     .replace(/(\d+) tines/g, 'соединительных перемычек: $1')
