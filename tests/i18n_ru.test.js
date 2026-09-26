@@ -42,6 +42,9 @@ Deno.test('ru catalog translates parameterized messages without changing their v
   assertEquals(translateText('5 support fins · 26 tines + 1 drawn'),
     'рёбер поддержки: 5 · соединительных перемычек: 26 + стенок вручную: 1');
   assertEquals(isAllowedEnglish(translateText(
+    '1 drawn wall couldn’t attach here (this overhang sits above another part of the model, so a wall standing on the plate can’t reach it — rotate so it faces the plate)',
+  )), true);
+  assertEquals(isAllowedEnglish(translateText(
     'this part balances on one point with nothing under it. Turn the bed pad on, or rotate until it sits down',
   )), true);
   assertEquals(isAllowedEnglish(translateText(
