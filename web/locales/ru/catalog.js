@@ -210,8 +210,8 @@ const TEMPLATES = [
     `3MF: импортирован объект «${name}»; всего объектов: ${total}.` },
   { pattern: /^(\d+) drawn walls?(?: · (\d+) tines)?$/, replace: ([, walls, tines]) =>
     `Стенок вручную: ${walls}${tines ? ` · соединительных перемычек: ${tines}` : ''}` },
-  { pattern: /^(\d+) drawn walls? couldn’t attach here \(this overhang sits above another part of the model, so a wall standing on the plate can’t reach it — rotate so it faces the plate\)$/, replace: ([, count]) =>
-    `Не удалось прикрепить стенок вручную: ${count} (на пути от стола к нависанию находится другая часть модели — поверните нависание к столу)` },
+  { pattern: /^(\d+) drawn walls? couldn’t attach here \(this overhang sits above another part of the model, so a wall standing on the plate can’t reach it — rotate so it faces the plate\)\.?$/, replace: ([, count]) =>
+    `Не удалось прикрепить стенок вручную: ${count} (на пути от стола к нависанию находится другая часть модели — поверните нависание к столу).` },
   { pattern: /^\((\d+) removed\)$/, replace: ([, count]) => `(удалено: ${count})` },
   { pattern: /^(?=\d+ (?:support fins?|props?|drawn|sway braces?))(.*)$/, replace: ([, value]) => value
     .replace(/(\d+) support fins?/g, 'рёбер поддержки: $1')
