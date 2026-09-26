@@ -36,10 +36,29 @@ Deno.test('ru catalog translates parameterized messages without changing their v
     translateText('This way up it needs no fins, 0 g. It prints tall, though, the weaker direction, so check the Strength arrow if it bears a load.'),
     'В этой ориентации рёбра не нужны, 0 г. Но деталь печатается в высоту, в менее прочном направлении: если она будет под нагрузкой, проверьте стрелку нагрузки.',
   );
+  assertEquals(translateText('(1 removed)'), '(удалено: 1)');
+  assertEquals(translateText('1 drawn wall + 1 sway brace · 8 tines'),
+    'стенок вручную: 1 + стабилизирующих распорок: 1 · соединительных перемычек: 8');
+  assertEquals(isAllowedEnglish(translateText(
+    'this part balances on one point with nothing under it. Turn the bed pad on, or rotate until it sits down',
+  )), true);
+  assertEquals(isAllowedEnglish(translateText(
+    'coverage is below the anti-sag guide, so a broad overhang may sag between supports — nudge the slider right if the surface bows',
+  )), true);
+  assertEquals(isAllowedEnglish(translateText(
+    '⚠ 3 small overhangs (hole ceilings, slots, bore tops) print unsupported this way up and may come out rough. Try Suggest orientation to point them up.',
+  )), true);
 });
 
 Deno.test('ru catalog leaves unknown text unchanged so upstream UI remains usable', () => {
   assertEquals(translateText('A brand new upstream message'), 'A brand new upstream message');
+});
+
+Deno.test('ru catalog is idempotent and preserves user object names', () => {
+  const source = '3MF: imported “Suggest orientation” of 2 objects.';
+  const once = translateText(source);
+  assertEquals(once, '3MF: импортирован объект «Suggest orientation»; всего объектов: 2.');
+  assertEquals(translateText(once), once);
 });
 
 Deno.test('ru allowlist accepts product terms but not untranslated prose', () => {

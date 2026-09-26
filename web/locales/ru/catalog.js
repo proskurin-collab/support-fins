@@ -70,6 +70,31 @@ const EXACT = new Map([
     'Укажите две точки поперёк нависания, чтобы поставить под ним отламываемую стенку; линия пройдёт точно по нарисованному месту, включая красные грани.'],
   ['couldn’t place that brace: too little of this face lines up with the brace for its tines to grip — try a flatter part of the side.',
     'не удалось поставить распорку: с ней совмещается слишком малая часть грани для крепления перемычек — попробуйте более плоский участок стороны.'],
+  ['this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down',
+    'деталь опирается на одну точку. Включите опорную площадку или поверните деталь до устойчивого положения'],
+  ['this part balances on one point with nothing under it. Turn the bed pad on, or rotate until it sits down',
+    'деталь опирается на одну точку без поддержки снизу. Включите опорную площадку или поверните деталь до устойчивого положения'],
+  ['coverage is below the anti-sag guide, so a broad overhang may sag between supports — nudge the slider right if the surface bows',
+    'плотность поддержек ниже рекомендуемой, поэтому широкое нависание может провиснуть между ними — сдвиньте ползунок вправо, если поверхность прогибается'],
+  ['no overhangs to prop in this orientation', 'в этой ориентации нет нависаний для подпорок'],
+  ['every wall that reaches these overhangs would fuse to the part — rotate, or switch to Draw and place one by hand',
+    'любая стенка, достигающая этих нависаний, сольётся с деталью — поверните деталь или разместите стенку вручную'],
+  ['no run of these overhangs is long enough to stand a wall under — the part is in the way, or they sit too close to the plate',
+    'ни один участок нависания не позволяет поставить стенку: мешает деталь либо нависание слишком близко к столу'],
+  ['the overhangs here are too small or too low to be worth a wall',
+    'нависания здесь слишком малы или расположены слишком низко для стенки'],
+  ['the contact lines here collapse to a point — nothing to sweep along',
+    'линии контакта здесь сходятся в точку — стенку не вдоль чего построить'],
+  ['no overhang here can take a prop in this orientation',
+    'в этой ориентации ни под одним нависанием нельзя поставить подпорку'],
+  ['nothing flat and wide enough to stand a fin against — curved or finely faceted surfaces have no flat face to grip',
+    'нет достаточно плоской и широкой грани для ребра — у изогнутых или мелкогранных поверхностей нет места для фиксации'],
+  ['no usable face in this orientation — try rotating',
+    'в этой ориентации нет подходящей грани — попробуйте повернуть деталь'],
+  ['the part is in the way of every wall position on the faces it found — rotate, or switch to Draw and place one by hand',
+    'деталь мешает всем найденным положениям стенки — поверните её или разместите стенку вручную'],
+  ['the workable spots would put the fin inside the part — try rotating',
+    'в подходящих местах ребро оказалось бы внутри детали — попробуйте повернуть её'],
   ['of support material added', 'на поддержки'],
   ['Print it support-free, in any slicer', 'Печатайте без поддержек слайсера'],
   ['Rotate a part however it prints best, and Support Fins bakes the breakaway supports right into the STL. It prints the same on any machine, in any slicer, with supports turned off.',
@@ -185,10 +210,11 @@ const TEMPLATES = [
     `3MF: импортирован объект «${name}»; всего объектов: ${total}.` },
   { pattern: /^(\d+) drawn walls?(?: · (\d+) tines)?$/, replace: ([, walls, tines]) =>
     `Стенок вручную: ${walls}${tines ? ` · соединительных перемычек: ${tines}` : ''}` },
+  { pattern: /^\((\d+) removed\)$/, replace: ([, count]) => `(удалено: ${count})` },
   { pattern: /^(?=\d+ (?:support fins?|props?|drawn|sway braces?))(.*)$/, replace: ([, value]) => value
     .replace(/(\d+) support fins?/g, 'рёбер поддержки: $1')
     .replace(/(\d+) props?/g, 'подпорок: $1')
-    .replace(/(\d+) drawn/g, 'вручную: $1')
+    .replace(/(\d+) drawn walls?/g, 'стенок вручную: $1')
     .replace(/(\d+) sway braces?/g, 'стабилизирующих распорок: $1')
     .replace(/(\d+) brace tines/g, 'перемычек распорок: $1')
     .replace(/(\d+) tines/g, 'соединительных перемычек: $1')
@@ -212,6 +238,12 @@ const TEMPLATES = [
     `${mm} мм · без рёбер${rough ? ` · шероховатых участков: ${rough}` : ''}` },
   { pattern: /^(\d+(?:\.\d+)?) mm · (\d+) fins?(?: · (\d+) rough)?$/, replace: ([, mm, fins, rough]) =>
     `${mm} мм · рёбер: ${fins}${rough ? ` · шероховатых участков: ${rough}` : ''}` },
+  { pattern: /^⚠ (\d+) small overhangs? \(hole ceilings, slots, bore tops\) print unsupported this way up and may come out rough\. Try Suggest orientation to point them up\.$/, replace: ([, count]) =>
+    `⚠ Мелких нависаний без поддержки: ${count} (потолки отверстий, пазы и верхние части каналов). Они могут получиться шероховатыми; попробуйте «Подобрать ориентацию» и направить их вверх.` },
+  { pattern: /^(\d+) flat faces? found, but every one starts too far up the part — a fin would be mostly bare stilt\. Rotate so a flat face runs down to the plate$/, replace: ([, count]) =>
+    `Найдено плоских граней: ${count}, но все начинаются слишком высоко — ребро осталось бы без опоры. Поверните деталь так, чтобы плоская грань доходила до стола` },
+  { pattern: /^(\d+) overhangs? (?:is|are) bowl-shaped rather than a ledge — (?:its|their) lowest points form a ring, not a line, so there is nothing for a wall to follow\. Rotate, or switch to Draw and place one by hand$/, replace: ([, count]) =>
+    `Чашеобразных нависаний: ${count}; их нижние точки образуют кольцо, а не линию для стенки. Поверните деталь или разместите стенку вручную` },
 ];
 
 const DYNAMIC_PHRASES = [
@@ -261,11 +293,16 @@ export function translateText(value) {
     const match = core.match(template.pattern);
     if (match) return `${before}${template.replace(match)}${after}`;
   }
-  let dynamic = core;
+  const quoted = [];
+  let dynamic = core.replace(/“[^”]+”|«[^»]+»/g, (value) => {
+    quoted.push(value);
+    return `\uE000${quoted.length - 1}\uE001`;
+  });
   for (const phrase of DYNAMIC_PHRASES) dynamic = dynamic.replace(phrase.pattern, phrase.replace);
   for (const [source, target] of EXACT) {
     if (source.length >= 12 && dynamic.includes(source)) dynamic = dynamic.replaceAll(source, target);
   }
+  dynamic = dynamic.replace(/\uE000(\d+)\uE001/g, (_, index) => quoted[Number(index)]);
   if (dynamic !== core) return `${before}${dynamic}${after}`;
   return String(value);
 }
