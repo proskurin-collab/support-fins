@@ -130,8 +130,8 @@ docker compose up --build        # http://localhost:8731/
 
 Сборки и серверной части нет, поэтому образ — это просто `nginx:stable-alpine`,
 раздающий статические файлы с такими же заголовками кеширования, как сервер разработки.
-См. [`docker-compose.yml`](docker-compose.yml), [`Dockerfile`](Dockerfile) и
-[`nginx.conf`](nginx.conf).
+См. [`docker-compose.yml`](../../docker-compose.yml), [`Dockerfile`](../../Dockerfile) и
+[`nginx.conf`](../../nginx.conf).
 
 Прототип на Python — это проверка концепции, из которой перенесён движок: обычная математика
 полигональных сеток без CAD-ядра.

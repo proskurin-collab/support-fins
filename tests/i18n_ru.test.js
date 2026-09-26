@@ -25,6 +25,11 @@ Deno.test('ru catalog translates parameterized messages without changing their v
     translateText('Could not read bracket.step:\ninvalid mesh'),
     'Не удалось прочитать bracket.step:\ninvalid mesh',
   );
+  assertEquals(translateText('5 support fins · 26 tines + 1 prop'),
+    'рёбер поддержки: 5 · соединительных перемычек: 26 + подпорок: 1');
+  assertEquals(translateText('0.2 mm gap · pad Автоматически (Лёгкая)'),
+    '0.2 мм зазор · площадка Автоматически (Лёгкая)');
+  assertEquals(translateText('20 mm · no fins'), '20 мм · без рёбер');
 });
 
 Deno.test('ru catalog leaves unknown text unchanged so upstream UI remains usable', () => {

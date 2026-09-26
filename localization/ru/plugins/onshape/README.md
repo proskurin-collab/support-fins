@@ -56,8 +56,8 @@
    Onshape предложит обновление.
 
 Для работы с кодом скопируйте документ или вставьте
-[`supportFins.fs`](supportFins.fs) в новый Feature Studio. Значок —
-[`supportFins-icon.svg`](supportFins-icon.svg): загрузите его в документ и укажите в строке
+[`supportFins.fs`](../../../../plugins/onshape/supportFins.fs) в новый Feature Studio. Значок —
+[`supportFins-icon.svg`](../../../../plugins/onshape/supportFins-icon.svg): загрузите его в документ и укажите в строке
 `icon::import(...)`.
 
 ## Использование

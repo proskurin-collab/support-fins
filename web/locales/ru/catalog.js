@@ -39,6 +39,12 @@ const EXACT = new Map([
   ['— it lights up green when a fin can go there — to stand a support fin against it.',
     '— она подсвечивается зелёным, если здесь можно разместить ребро поддержки.'],
   ['Remove selected', 'Удалить выбранное'], ['Clear all', 'Удалить все'],
+  ['not needed', 'не нужна'], ['added', 'добавлена'],
+  ['Auto (Light)', 'Автоматически (Лёгкая)'],
+  ['Auto (Sure hold)', 'Автоматически (Надёжная фиксация)'],
+  ['none yet', 'пока нет'], ['none possible', 'невозможно разместить'],
+  ['Best', 'Лучшая'], ['No support', 'Без поддержек'], ['Bores clean', 'Чистые отверстия'],
+  ['off', 'выкл.'], ['solid', 'сплошные'],
   ['of support material added', 'на поддержки'],
   ['Print it support-free, in any slicer', 'Печатайте без поддержек слайсера'],
   ['Rotate a part however it prints best, and Support Fins bakes the breakaway supports right into the STL. It prints the same on any machine, in any slicer, with supports turned off.',
@@ -148,6 +154,27 @@ const TEMPLATES = [
   { pattern: /^(\d+) fps$/, replace: ([, n]) => `${n} кадр/с` },
   { pattern: /^(\d+) region(?:s)?(?: \(\+(\d+) sliver(?:s)?\))?$/, replace: ([, n, small]) => `Участков: ${n}${small ? ` (мелких: +${small})` : ''}` },
   { pattern: /^imported “(.+)” of (\d+) objects$/, replace: ([, name, total]) => `Импортирован объект «${name}»; всего объектов: ${total}` },
+  { pattern: /^(\d+) drawn walls?(?: · (\d+) tines)?$/, replace: ([, walls, tines]) =>
+    `Стенок вручную: ${walls}${tines ? ` · соединительных перемычек: ${tines}` : ''}` },
+  { pattern: /^(?=\d+ (?:support fins?|props?|drawn|sway braces?))(.*)$/, replace: ([, value]) => value
+    .replace(/(\d+) support fins?/g, 'рёбер поддержки: $1')
+    .replace(/(\d+) props?/g, 'подпорок: $1')
+    .replace(/(\d+) drawn/g, 'вручную: $1')
+    .replace(/(\d+) sway braces?/g, 'стабилизирующих распорок: $1')
+    .replace(/(\d+) brace tines/g, 'перемычек распорок: $1')
+    .replace(/(\d+) tines/g, 'соединительных перемычек: $1')
+    .replace(/\((\d+) removed\)/g, '(удалено: $1)') },
+  { pattern: /^(light|medium|firm) grip · (\d+(?:\.\d+)?) mm$/, replace: ([, grip, mm]) =>
+    `${({ light: 'слабая', medium: 'средняя', firm: 'сильная' })[grip]} фиксация · ${mm} мм` },
+  { pattern: /^(\d+(?:\.\d+)?) mm gap · pad (.+)$/, replace: ([, mm, pad]) =>
+    `${mm} мм зазор · площадка ${pad}` },
+  { pattern: /^(.+) cutouts$/, replace: ([, style]) => `${style} · вырезы` },
+  { pattern: /^(\d+(?:\.\d+)?) mm tines · (\d+(?:\.\d+)?)% deep(?: · from (\d+(?:\.\d+)?) mm)?$/, replace: ([, spacing, depth, from]) =>
+    `${spacing} мм между перемычками · глубина ${depth}%${from ? ` · от ${from} мм` : ''}` },
+  { pattern: /^(\d+(?:\.\d+)?) mm · no fins(?: · (\d+) rough)?$/, replace: ([, mm, rough]) =>
+    `${mm} мм · без рёбер${rough ? ` · шероховатых участков: ${rough}` : ''}` },
+  { pattern: /^(\d+(?:\.\d+)?) mm · (\d+) fins?(?: · (\d+) rough)?$/, replace: ([, mm, fins, rough]) =>
+    `${mm} мм · рёбер: ${fins}${rough ? ` · шероховатых участков: ${rough}` : ''}` },
 ];
 
 const ALLOWED_ENGLISH = [

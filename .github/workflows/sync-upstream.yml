@@ -36,7 +36,7 @@ jobs:
         id: mirror
         run: |
           new=$(git rev-parse upstream/main)
-          old=$(git rev-parse origin/upstream-sync 2>/dev/null || true)
+          old=$(git rev-parse --verify origin/upstream-sync 2>/dev/null || true)
           echo "sha=$new" >> "$GITHUB_OUTPUT"
           if [ -n "$old" ] && ! git merge-base --is-ancestor "$old" "$new"; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
