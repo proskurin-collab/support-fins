@@ -7,9 +7,10 @@ import { el } from './dom.js';
 import { removedIds } from './remove.js';
 import { drawnWalls, drawMsg, selectedWall, selectedNote, drawShown, drawMaterial } from './walls.js';
 import {
-  finMode, finsVisible, activeAdded, materialDensity, analysisTiming, syncSectionSums,
-  finMaterial, padMaterial,
-} from '../app.js';
+  finMode, finsVisible, materialDensity, syncSectionSums,
+} from './settings.js';
+import { analysisTiming } from './part.js';
+import { activeAdded, finMaterial, padMaterial } from './finbuild.js';
 
 /**
  * Why did this part get no fins, in terms the user can act on?
@@ -26,59 +27,59 @@ function explainNoFins(b) {
   // something that was never the problem. This outranks every mode-specific
   // reason below.
   if (b.seating?.kind === 'point' && !b.pad) {
-    return 'деталь касается печатного стола в одной точке и не может '
-         + 'стоять устойчиво. Включите опорную площадку или поверните деталь, чтобы она опиралась '
-         + 'на грань или ребро';
+    return 'this part touches the plate at a single point, so it has nothing to '
+         + 'stand on. Turn the bed pad on to seat it, or rotate until it sits '
+         + 'down on a face or an edge';
   }
   if (b.mode === 'prop') {
     const s = b.skipped ?? {};
-    if (!b.rejected.sites) return 'в этой ориентации нет нависаний, требующих подпорок';
+    if (!b.rejected.sites) return 'no overhangs to prop in this orientation';
     // Named in the order that tells the user the most. Each is a different
     // stage of the search, and lumping them into "blocked" is what let M5 be
     // recorded as working on a part where it built nothing.
     if (s.wanders) {
       const one = s.wanders === 1;
-      return `Чашеобразных нависаний: ${s.wanders}${one ? '' : ''}. Их форма отличается от `
-           + `выступа — ${one ? 'их' : 'их'} нижние точки образуют кольцо, а не `
-           + 'линию, вдоль которой можно построить стенку. Поверните деталь или выберите '
-           + '«Ручное размещение» и поставьте стенку вручную';
+      return `${s.wanders} overhang${one ? ' is' : 's are'} bowl-shaped rather than `
+           + `a ledge — ${one ? 'its' : 'their'} lowest points form a ring, not a `
+           + 'line, so there is nothing for a wall to follow. Rotate, or switch '
+           + 'to Draw and place one by hand';
     }
     if (s.buried || s.weld) {
-      return 'любая стенка, достигающая этих нависаний, сплавится с '
-           + 'деталью — поверните её или выберите «Ручное размещение» и поставьте стенку вручную';
+      return 'every wall that reaches these overhangs would fuse to the '
+           + 'part — rotate, or switch to Draw and place one by hand';
     }
     if (s.blocked) {
-      return 'ни один участок нависаний не подходит по длине для стенки — '
-           + 'мешает сама деталь или они слишком близко к печатному столу';
+      return 'no run of these overhangs is long enough to stand a wall under — '
+           + 'the part is in the way, or they sit too close to the plate';
     }
     if (s.stub || s.noLine || s.sliver) {
-      return 'нависания слишком малы или расположены слишком низко, чтобы им требовалась стенка';
+      return 'the overhangs here are too small or too low to be worth a wall';
     }
     if (s.degenerate) {
-      return 'линии контакта вырождаются в точку — нет линии для построения стенки';
+      return 'the contact lines here collapse to a point — nothing to sweep along';
     }
-    return 'в этой ориентации ни под одним нависанием нельзя поставить подпорку';
+    return 'no overhang here can take a prop in this orientation';
   }
   const st = b.patchStats ?? {};
   if (!b.patchCount) {
     // a cylinder or a mesh of small facets has no flat face wide enough
     return (st.tooNarrow ?? 0) > (st.notFlat ?? 0)
-      ? 'нет достаточно широкой плоской поверхности для ребра — на изогнутых или '
-        + 'мелкогранных поверхностях нет плоской грани для крепления'
-      : 'в этой ориентации у детали нет плоской вертикальной грани';
+      ? 'nothing flat and wide enough to stand a fin against — curved or '
+        + 'finely faceted surfaces have no flat face to grip'
+      : 'no flat upright face on this part in this orientation';
   }
   if (!b.rejected.sites) {
     return st.tooHigh
-      ? `Найдено плоских граней: ${st.tooHigh}${st.tooHigh === 1 ? '' : ''}, но все `
-        + 'они начинаются слишком высоко — большая часть ребра останется без контакта с деталью. '
-        + 'Поверните деталь так, чтобы плоская грань доходила до печатного стола'
-      : 'в этой ориентации нет подходящей грани — попробуйте повернуть деталь';
+      ? `${st.tooHigh} flat face${st.tooHigh === 1 ? '' : 's'} found, but every `
+        + 'one starts too far up the part — a fin would be mostly bare stilt. '
+        + 'Rotate so a flat face runs down to the plate'
+      : 'no usable face in this orientation — try rotating';
   }
   if (b.rejected.blocked) {
-    return 'деталь мешает поставить стенку во всех найденных местах '
-         + '— поверните её или выберите «Ручное размещение» и поставьте стенку вручную';
+    return 'the part is in the way of every wall position on the faces it found '
+         + '— rotate, or switch to Draw and place one by hand';
   }
-  return 'в подходящих местах ребро окажется внутри детали — попробуйте повернуть её';
+  return 'the workable spots would put the fin inside the part — try rotating';
 }
 
 // Grams use the selected material's density (materialDensity, set by applyMaterial),
@@ -114,7 +115,7 @@ function updateReceipt() {
   const added = activeAdded();
   if (!finsVisible || !added.length) { box.hidden = true; return; }
   const grams = meshVolumeMM3(added) * materialDensity / 1000;
-  el('r-grams').textContent = `${fmtGrams(grams)} г`;
+  el('r-grams').textContent = `${fmtGrams(grams)} g`;
   box.hidden = false;
 }
 
@@ -158,24 +159,24 @@ function updateDrawReadout(built, ms) {
   const braces = ok.filter((w) => w.kind === 'sway').length;
   const walls = ok.length - braces;
   const parts = [];
-  if (walls) parts.push(`стенок вручную: ${walls}${walls === 1 ? '' : ''}`);
-  if (braces) parts.push(`стабилизирующих распорок: ${braces}${braces === 1 ? '' : ''}`);
+  if (walls) parts.push(`${walls} drawn wall${walls === 1 ? '' : 's'}`);
+  if (braces) parts.push(`${braces} sway brace${braces === 1 ? '' : 's'}`);
   box.textContent = ok.length
-    ? parts.join(' + ') + (tines ? ` · соединительных перемычек: ${tines}` : '')
-    : 'пока нет';
+    ? parts.join(' + ') + (tines ? ` · ${tines} tines` : '')
+    : 'none yet';
   box.classList.toggle('warn', ok.length === 0);
 
   const lead = [];
   const help = [];
   if (!drawnWalls.length && !drawMsg) {
-    lead.push('Укажите две точки поперёк нависания (линия пройдёт там, где вы её '
-      + 'начертите, в том числе по красным граням), чтобы поставить под ним отламываемую стенку');
+    lead.push('Click two points across an overhang (a line lands right where you '
+      + 'draw it, red faces included) to lay a breakaway wall under it');
   }
   if (ok.length) {
     help.push(tines
-      ? 'Соединительные перемычки держатся за деталь и отгибаются, когда вы отламываете стенку.'
-      : 'Каждая стенка заканчивается чуть ниже детали (0.2 мм), чтобы легко отламываться. Включите '
-        + 'соединительные перемычки, если нужно крепление к детали.');
+      ? 'The tines grab onto the part and bend away when you snap the wall off.'
+      : 'Each wall stops a hair under the part (0.2mm) so it snaps off clean. Turn '
+        + 'Tines on if you want it to grip the part.');
   }
   // A brace you place by hand is built even where Auto would refuse to stand one,
   // so say what it is doing: below its first tine it holds nothing and nothing
@@ -183,25 +184,25 @@ function updateDrawReadout(built, ms) {
   const stilted = ok.filter((w) => w.kind === 'sway' && (w.info?.stilt ?? 0) > 20);
   if (stilted.length) {
     const tallest = Math.max(...stilted.map((w) => w.info.stilt));
-    help.push(`${stilted.length === 1 ? 'Одна распорка поднимается' : `Распорок без контакта с деталью: ${stilted.length}, высота`} `
-      + `до ${Math.round(tallest)} мм перед креплением к детали — этот участок печатается как `
-      + 'отдельно стоящая стенка. Если она раскачивается при печати, поверните деталь так, чтобы эта сторона доходила до печатного стола.');
+    help.push(`${stilted.length === 1 ? 'One brace stands' : `${stilted.length} braces stand`} `
+      + `up to ${Math.round(tallest)}mm before gripping the part — that much of it prints as a `
+      + 'lone wall. Fine if it prints; rotate so that side reaches the plate if it wobbles.');
   }
   if (bad) {
     const one = drawnWalls.find((w) => !w.ok);
-    lead.push(`Не удалось построить стенок: ${bad}${bad === 1 ? '' : ''}`
-      + `${one?.info?.reason ? ` (${one.info.reason})` : ''}. Отмените действие или начертите заново`);
+    lead.push(`${bad} wall${bad === 1 ? '' : 's'} couldn’t build here`
+      + `${one?.info?.reason ? ` (${one.info.reason})` : ''}. Undo, or redraw`);
   }
   if (drawMsg) lead.push(drawMsg);
   if (selectedWall) lead.push(selectedNote());
   if (built?.seating?.kind === 'point') {
     lead.push(built.pad
-      ? 'деталь опирается на одну точку, поэтому её держит опорная площадка. Печатайте с площадкой'
-      : 'деталь опирается на одну точку. Включите опорную площадку или поверните деталь до устойчивого положения');
+      ? 'this part balances on one point, so the bed pad is holding it. Print with the pad on'
+      : 'this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down');
   }
   if (built && padNote(built)) lead.push(padNote(built));
   setFinNote(lead, help);
-  if (ms != null) el('s-time').textContent = `${analysisTiming} · площадка ${ms.toFixed(0)} мс`;
+  if (ms != null) el('s-time').textContent = `${analysisTiming} · pad ${ms.toFixed(0)} ms`;
 }
 
 /**
@@ -212,33 +213,33 @@ function updateDrawReadout(built, ms) {
  */
 function padStatus(built) {
   syncAutoLabel(built);
-  if (!built.pad) return 'не нужна';
-  return built.pad.autoSure ? 'Надёжная фиксация (малая опора)' : 'добавлена';
+  if (!built.pad) return 'not needed';
+  return built.pad.autoSure ? 'Sure hold (small foot)' : 'added';
 }
 // The Auto option names what it built, so the dropdown never claims Light while
 // the pad on screen is Sure hold.
 function syncAutoLabel(built) {
   const opt = el('bed-pad').querySelector('option[value="auto"]');
   const p = built?.pad;
-  opt.textContent = !p || PAD.style !== 'auto' ? 'Автоматически'
-    : p.style === 'sure' ? 'Автоматически (Надёжная фиксация)' : 'Автоматически (Лёгкая)';
+  opt.textContent = !p || PAD.style !== 'auto' ? 'Auto'
+    : p.style === 'sure' ? 'Auto (Sure hold)' : 'Auto (Light)';
   syncSectionSums();
 }
 function padNote(built) {
   const p = built.pad;
   if (!p?.smallFoot) return '';
-  const mm = p.outline < 1 ? 'менее 1 мм' : `${p.outline.toFixed(0)} мм`;
+  const mm = p.outline < 1 ? 'under 1 mm' : `${p.outline.toFixed(0)} mm`;
   if (p.autoSure) {
-    return `У детали малая площадь опоры на печатный стол (${mm} края первого слоя): этого недостаточно для `
-         + 'сцепления площадки «Лёгкая», поэтому режим «Автоматически» выбрал «Надёжная фиксация» с контактом для удержания детали';
+    return `this part meets the plate on a small foot (${mm} of first-layer edge), too little for a `
+         + 'Light pad to grip, so Auto made it Sure hold, touching the part to hold it';
   }
   if (PAD.style === 'light') {
-    return `У детали малая площадь опоры на печатный стол (${mm} края первого слоя); площадке «Лёгкая» `
-         + 'почти не за что зацепиться. Выберите «Автоматически» или «Надёжная фиксация»';
+    return `this part meets the plate on a small foot (${mm} of first-layer edge); a Light pad has `
+         + 'almost nothing to grip. Auto or Sure hold holds it';
   }
   if (PAD.style === 'custom' && PAD.custom.gap > 0) {
-    return `У детали малая площадь опоры на печатный стол (${mm} края первого слоя); площадке с зазором `
-         + 'почти не за что зацепиться. Выберите «Надёжная фиксация» или задайте зазор площадки 0';
+    return `this part meets the plate on a small foot (${mm} of first-layer edge); a pad with a gap `
+         + 'has almost nothing to grip. Sure hold, or Pad gap 0, holds it';
   }
   return '';
 }
@@ -266,24 +267,24 @@ function updateFinReadout(built, ms) {
     // flat to take a fin. "N fins" alone would hide which is which.
     const p = built.propCount, b = built.braceCount;
     const seg = [];
-    if (b) seg.push(`рёбер: ${b}${b === 1 ? '' : ''}` + (built.tines ? ` · соединительных перемычек: ${built.tines}` : ''));
-    if (p) seg.push(`подпорок: ${p}${p === 1 ? '' : ''}`);
+    if (b) seg.push(`${b} support fin${b === 1 ? '' : 's'}` + (built.tines ? ` · ${built.tines} tines` : ''));
+    if (p) seg.push(`${p} prop${p === 1 ? '' : 's'}`);
     autoTxt = seg.join(' + ');
   } else {
     autoTxt = n
-      ? `Всего: ${n} · ${kind === 'prop' ? 'подпорки' : 'рёбра поддержки'}${n === 1 ? '' : ''}`
-        + (built.mode === 'prop' || !built.tines ? '' : ` · соединительных перемычек: ${built.tines}`)
+      ? `${n} ${kind === 'prop' ? 'prop' : 'support fin'}${n === 1 ? '' : 's'}`
+        + (built.mode === 'prop' || !built.tines ? '' : ` · ${built.tines} tines`)
       : '';
   }
-  const drawnTxt = drawnOk ? `${autoTxt ? ' + ' : ''}вручную: ${drawnOk}` : '';
+  const drawnTxt = drawnOk ? `${autoTxt ? ' + ' : ''}${drawnOk} drawn` : '';
   const removedN = removedIds.size;
-  const removedTxt = removedN ? ` (удалено: ${removedN})` : '';
+  const removedTxt = removedN ? ` (${removedN} removed)` : '';
   const sw = built.sway;
   const swayTxt = sw?.count
-    ? `${autoTxt || drawnTxt ? ' + ' : ''}стабилизирующих распорок: ${sw.count}${sw.count === 1 ? '' : ''}`
-      + (sw.tines ? ` · перемычек распорок: ${sw.tines}` : '')
+    ? `${autoTxt || drawnTxt ? ' + ' : ''}${sw.count} sway brace${sw.count === 1 ? '' : 's'}`
+      + (sw.tines ? ` · ${sw.tines} brace tines` : '')
     : '';
-  box.textContent = (autoTxt + drawnTxt + swayTxt + removedTxt) || 'невозможно разместить';
+  box.textContent = (autoTxt + drawnTxt + swayTxt + removedTxt) || 'none possible';
   box.classList.toggle('warn', n === 0 && !drawnOk && !sw?.count);
 
   // `lead` = short + must-see, stays in the panel; `help` = how-it-works and
@@ -301,22 +302,22 @@ function updateFinReadout(built, ms) {
       const b = built.braceCount, p = built.propCount;
       if (b) {
         help.push(built.tines
-          ? 'Соединительные перемычки держатся за деталь и отгибаются при отламывании поддержек.'
-          : 'Рёбра стоят с небольшим зазором от детали (0.2 мм), чтобы легко отламываться. Включите соединительные перемычки для крепления к детали.');
+          ? 'The tines grab onto the part and bend away when you snap the supports off.'
+          : 'The fins stand a hair off the part (0.2mm) so they pop off. Turn Tines on if you want them to grip.');
       }
       if (p && !b) {
-        help.push('Это простые подпорки без крепления к детали. Эти нависания '
-          + 'слишком пологие или изогнутые для ребра, поэтому соединительные перемычки добавить нельзя.');
+        help.push('These are plain props, not gripping fins. The overhangs here are '
+          + 'too shallow or curved to stand a fin against, so there are no tines to add.');
       } else if (p) {
-        help.push(`Подпорок: ${p}${p === 1 ? '' : ''}. Они стоят под нависаниями, слишком пологими `
-          + 'для крепления, поэтому соединительных перемычек у них нет.');
+        help.push(`The ${p} prop${p === 1 ? '' : 's'} sit under overhangs too shallow `
+          + 'to grip, so those get no tines.');
       }
     } else if (built.mode === 'prop') {
-      help.push('Каждая заканчивается чуть ниже детали (0.2 мм), поэтому её можно отломить без срезания.');
+      help.push('Each one stops a hair under the part (0.2mm) so it pops off instead of needing a cut.');
     }
   }
   if (drawnOk) {
-    lead.push(`также добавлено стенок вручную: ${drawnOk}${drawnOk === 1 ? '' : ''}`);
+    lead.push(`plus ${drawnOk} wall${drawnOk === 1 ? '' : 's'} you added by hand`);
   }
   // Hand-placement feedback has to surface here too (Suggest + Draw mix), or a
   // rejected wall fails silently -- the same silence-as-success trap as M5. This
@@ -325,7 +326,7 @@ function updateFinReadout(built, ms) {
     const bad = drawnWalls.length - drawnOk;
     if (bad) {
       const one = drawnWalls.find((w) => !w.ok);
-      lead.push(`Не удалось прикрепить стенок, размещённых вручную: ${bad}${bad === 1 ? '' : ''}`
+      lead.push(`${bad} drawn wall${bad === 1 ? '' : 's'} couldn’t attach here`
               + (one?.info?.reason ? ` (${one.info.reason})` : ''));
     }
     if (drawMsg) lead.push(drawMsg);
@@ -336,8 +337,8 @@ function updateFinReadout(built, ms) {
   // not cosmetic. Must-see -> stays visible.
   if (n && built.seating?.kind === 'point') {
     lead.push(built.pad
-      ? 'деталь опирается на одну точку, поэтому её держит опорная площадка. Печатайте с площадкой'
-      : 'деталь опирается на одну точку без поддержки снизу. Включите опорную площадку или поверните деталь до устойчивого положения');
+      ? 'this part balances on one point, so the bed pad is holding it. Print with the pad on'
+      : 'this part balances on one point with nothing under it. Turn the bed pad on, or rotate until it sits down');
   }
   if (padNote(built)) lead.push(padNote(built));
   if (built.sagRisk) {
@@ -345,36 +346,36 @@ function updateFinReadout(built, ms) {
     // spaced wider than the 12mm anti-sag guide. That's allowed on purpose (fewer
     // supports), but the plate can bow between them -- must-see, so it's in the
     // panel, not behind the (i).
-    lead.push('плотность поддержек ниже рекомендуемой для защиты от провисания, поэтому широкое нависание может прогнуться '
-            + 'между поддержками — сдвиньте ползунок вправо, если поверхность прогибается');
+    lead.push('coverage is below the anti-sag guide, so a broad overhang may sag '
+            + 'between supports — nudge the slider right if the surface bows');
   }
   if (built.unserved) {
     // An un-served ledge is a shallow overhang with no room for a prop and too
     // flat to stand a fin against. The fix (tilt steeper) is a sentence, so it
     // rides in the (i) rather than the panel.
-    help.push(`Нависаний, слишком пологих для ребра: ${built.unserved}${built.unserved === 1 ? '' : ''}. `
-            + 'Увеличьте наклон детали, чтобы ребро могло '
-            + 'пройти вдоль них (попробуйте «Подобрать ориентацию»), или добавьте стенку вручную.');
+    help.push(`${built.unserved} overhang${built.unserved === 1 ? ' is' : 's are'} `
+            + 'too shallow for a fin this way up. Tilt the part steeper so a fin can '
+            + 'follow it (try Suggest orientation), or add a wall by hand.');
   }
   if (built.skipped?.bore) {
     // A support standing INSIDE a bore or slot scars a surface you can't clean --
     // worse than a little sag. The tool refuses those on purpose; the honest fix
     // is to rotate the hole so it faces out and prints clean with no support.
     const b = built.skipped.bore;
-    help.push(`Нависаний внутри отверстий или пазов: ${b}${b === 1 ? '' : ''}. `
-            + `Поддержка там оставит след в недоступном месте. Приложение оставляет `
-            + `${b === 1 ? 'их' : 'их'} без поддержек: поверните отверстия вверх, чтобы напечатать `
-            + `${b === 1 ? 'их' : 'их'} без следов.`);
+    help.push(`${b} overhang${b === 1 ? ' sits' : 's sit'} inside a bore or slot, `
+            + `where a support would leave a mark you can’t reach. The tool leaves `
+            + `${b === 1 ? 'it' : 'them'} alone, so turn the hole upward to print `
+            + `${b === 1 ? 'it' : 'them'} clean.`);
   }
   // Sway braces were asked for, so say what they did -- and why, if nothing.
   if (sw) {
-    if (!sw.count) lead.push(`нет стабилизирующих распорок: ${sw.reason}`);
+    if (!sw.count) lead.push(`no sway braces: ${sw.reason}`);
     else {
-      help.push('Стабилизирующие распорки стоят торцом к высоким сторонам и крепятся '
-        + 'соединительными перемычками по всей высоте, чтобы верх детали не смещался и не раскачивался при печати.');
+      help.push('The sway braces stand edge-on against the tall sides and are tied on '
+        + 'by tines all the way up, so the top can’t drift or wobble as it prints.');
       if (sw.skipped) {
-        help.push(`Мест для распорок, перекрытых деталью: ${sw.skipped}${sw.skipped === 1 ? '' : ''}. Мешает `
-          + 'сама деталь. Выберите «Ручное размещение» и нажмите на вертикальную сторону, чтобы поставить распорку вручную.');
+        help.push(`${sw.skipped} brace spot${sw.skipped === 1 ? ' was' : 's were'} blocked by `
+          + 'the part itself. Switch to Draw and click an upright side to place one by hand.');
       }
     }
   }
@@ -382,5 +383,5 @@ function updateFinReadout(built, ms) {
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and
   // never throw, or the updateReceipt() call after this one never happens.
-  if (ms != null) el('s-time').textContent = `${analysisTiming} · рёбра ${ms.toFixed(0)} мс`;
+  if (ms != null) el('s-time').textContent = `${analysisTiming} · fins ${ms.toFixed(0)} ms`;
 }

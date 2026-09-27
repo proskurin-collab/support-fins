@@ -69,7 +69,7 @@ function subtreeMeshes(node, out = []) {
  * @returns { objects: [{ name, positions:Float32Array, tris, meshes, bbox }] }
  */
 export function stepObjects(result) {
-  if (!result?.success) throw new Error('ядро CAD не смогло прочитать этот файл STEP');
+  if (!result?.success) throw new Error('the CAD kernel could not read this STEP file');
 
   let node = result.root ?? { name: '', meshes: result.meshes.map((_, i) => i), children: [] };
   while (!node.meshes?.length && node.children?.length === 1) node = node.children[0];
@@ -96,7 +96,7 @@ export function stepObjects(result) {
       }
     }
     objects.push({
-      name: g.name || result.meshes[ids[0]]?.name || `Тело ${objects.length + 1}`,
+      name: g.name || result.meshes[ids[0]]?.name || `Body ${objects.length + 1}`,
       positions,
       tris,
       meshes: ids.length,
@@ -104,7 +104,7 @@ export function stepObjects(result) {
     });
   }
 
-  if (!objects.length) throw new Error('этот файл STEP не содержит твердотельной геометрии');
+  if (!objects.length) throw new Error('this STEP file contains no solid geometry');
   return { objects };
 }
 
@@ -133,7 +133,7 @@ export async function readStep(bytes) {
   const result = await new Promise((resolve, reject) => {
     const fail = (msg) => { w.terminate(); if (worker === w) worker = null; reject(new Error(msg)); };
     w.onmessage = (e) => (e.data.error ? fail(e.data.error) : resolve(e.data));
-    w.onerror = (e) => fail(e.message || 'не удалось загрузить модуль чтения STEP');
+    w.onerror = (e) => fail(e.message || 'the STEP reader failed to load');
     w.postMessage({ bytes, params: STEP_PARAMS });
   });
   return stepObjects(result);

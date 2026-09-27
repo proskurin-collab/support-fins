@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,37 +24,37 @@
 <!-- Long-build spinner: revealed by a 1s timer while a support build runs in the
      worker, hidden the moment it lands, so a quick rebuild never flashes it.
      Purely informational; pointer-events:none lets clicks pass to the canvas. -->
-<div id="spinner" aria-live="polite"><span class="ring"></span>создание поддержек…</div>
+<div id="spinner" aria-live="polite"><span class="ring"></span>generating supports…</div>
 
 <header id="topbar">
   <span class="brand"><img src="favicon.svg" alt="" class="brand-mark">Support&nbsp;Fins</span>
   <label class="btn primary">
-    Импорт<input type="file" id="file" accept=".stl,.3mf,.step,.stp" hidden>
+    Import<input type="file" id="file" accept=".stl,.3mf,.step,.stp" hidden>
   </label>
   <label class="field">
-    Область печати
+    Build volume
     <select id="volume"></select>
   </label>
   <span class="field custom-vol" id="custom-vol" hidden>
-    <input type="number" id="vx" min="20" max="2000" step="1" aria-label="ширина">×<input
-           type="number" id="vy" min="20" max="2000" step="1" aria-label="глубина">×<input
-           type="number" id="vz" min="20" max="2000" step="1" aria-label="высота">мм
+    <input type="number" id="vx" min="20" max="2000" step="1" aria-label="width">×<input
+           type="number" id="vy" min="20" max="2000" step="1" aria-label="depth">×<input
+           type="number" id="vz" min="20" max="2000" step="1" aria-label="height">mm
   </span>
-  <label class="field" title="Угол поверхности относительно стола, ниже которого грани нужна поддержка.">
-    Нависание
+  <label class="field" title="Surface angle from the plate below which a face needs support.">
+    Overhang
     <input type="range" id="thr" min="30" max="70" step="1" value="45">
     <output id="thr-val">45°</output>
   </label>
   <span class="spacer"></span>
-  <button class="btn" id="fins-toggle">Добавить рёбра</button>
-  <button class="btn" id="export">Экспорт STL</button>
-  <button class="btn" id="export-3mf" title="Открывается в заданной ориентации и не требует поддержек слайсера в Bambu Studio, OrcaSlicer или PrusaSlicer. Bambu/PrusaSlicer могут сообщить об отсутствии настроек и загрузке только геометрии — это нормально; деталь импортируется правильно.">Экспорт 3MF</button>
+  <button class="btn" id="fins-toggle">Add fins</button>
+  <button class="btn" id="export">Export STL</button>
+  <button class="btn" id="export-3mf" title="Opens oriented and support-free in Bambu Studio, OrcaSlicer, or PrusaSlicer. Bambu/PrusaSlicer may note 'no config, geometry only' — expected; the part still comes in correct.">Export 3MF</button>
   <a class="btn gh" href="https://github.com/gittrahan/support-fins" target="_blank" rel="noopener"
-     title="Исходный код на GitHub. Всё работает в браузере; файлы не покидают ваш компьютер."
-     aria-label="Support Fins на GitHub"><svg viewBox="0 0 16 16" width="16" height="16"
+     title="Source code on GitHub. Runs entirely in your browser; no file ever leaves your machine."
+     aria-label="Support Fins on GitHub"><svg viewBox="0 0 16 16" width="16" height="16"
      aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>&nbsp;GitHub</a>
   <a class="btn kofi" href="https://ko-fi.com/matthewtrahan" target="_blank" rel="noopener"
-     title="Support Fins — бесплатный проект с открытым исходным кодом. Поддержите автора чашкой кофе на Ko-fi.">☕&nbsp;Ko-fi</a>
+     title="Support Fins is free and open source — buy me a coffee on Ko-fi.">☕&nbsp;Ko-fi</a>
 </header>
 
 <!-- The two stacked left-hand panels (stats + rotate controls) share one fixed
@@ -64,50 +64,50 @@
 <div id="left-rail">
 <aside id="stats" hidden>
   <dl>
-    <dt>Файл</dt>             <dd id="s-name">—</dd>
-    <dt>Треугольники</dt>        <dd id="s-tris">—</dd>
-    <dt>Размер</dt>             <dd id="s-bbox">—</dd>
-    <dt>Область</dt>           <dd id="s-fit">—</dd>
+    <dt>File</dt>             <dd id="s-name">—</dd>
+    <dt>Triangles</dt>        <dd id="s-tris">—</dd>
+    <dt>Size</dt>             <dd id="s-bbox">—</dd>
+    <dt>Volume</dt>           <dd id="s-fit">—</dd>
   </dl>
   <hr>
   <dl>
-    <dt><i class="sw sw-over"></i>Нависания</dt> <dd id="s-over">—</dd>
-    <dt>Площадь</dt>                                <dd id="s-overarea">—</dd>
-    <dt><i class="sw sw-bed"></i>Контакт&nbsp;со столом</dt> <dd id="s-bed">—</dd>
-    <dt><i class="sw sw-fin"></i>Рёбра</dt>       <dd><span id="s-fins">—</span><button
+    <dt><i class="sw sw-over"></i>Overhangs</dt> <dd id="s-over">—</dd>
+    <dt>Area</dt>                                <dd id="s-overarea">—</dd>
+    <dt><i class="sw sw-bed"></i>Bed&nbsp;contact</dt> <dd id="s-bed">—</dd>
+    <dt><i class="sw sw-fin"></i>Fins</dt>       <dd><span id="s-fins">—</span><button
         type="button" class="note-info" id="s-fin-info" hidden
-        aria-label="Как работают поддержки и какие участки остаются без поддержки в этой ориентации">i</button></dd>
-    <dt><i class="sw sw-pad"></i>Площадка</dt> <dd id="s-pad">—</dd>
-    <dt>Анализ</dt>                            <dd id="s-time">—</dd>
+        aria-label="How these supports work, and what this pose leaves uncovered">i</button></dd>
+    <dt><i class="sw sw-pad"></i>Bed&nbsp;pad</dt> <dd id="s-pad">—</dd>
+    <dt>Analysis</dt>                            <dd id="s-time">—</dd>
   </dl>
 </aside>
 
 <aside id="orient" hidden>
-  <span class="lbl">Повернуть на 90°</span>
-  <button class="btn sm" id="rot-x" aria-label="Повернуть на 90 градусов вокруг X">X</button>
-  <button class="btn sm" id="rot-y" aria-label="Повернуть на 90 градусов вокруг Y">Y</button>
-  <button class="btn sm" id="rot-z" aria-label="Повернуть на 90 градусов вокруг Z">Z</button>
-  <button class="btn sm" id="rot-reset">Сбросить</button>
-  <button class="btn sm" id="undo" title="Отменить (⌘/Ctrl+Z)" disabled>Отменить</button>
-  <button class="btn sm" id="redo" title="Повторить (⇧⌘/Ctrl+Shift+Z)" disabled>Повторить</button>
+  <span class="lbl">Rotate 90°</span>
+  <button class="btn sm" id="rot-x" aria-label="Rotate 90 degrees about X">X</button>
+  <button class="btn sm" id="rot-y" aria-label="Rotate 90 degrees about Y">Y</button>
+  <button class="btn sm" id="rot-z" aria-label="Rotate 90 degrees about Z">Z</button>
+  <button class="btn sm" id="rot-reset">Reset</button>
+  <button class="btn sm" id="undo" title="Undo (⌘/Ctrl+Z)" disabled>Undo</button>
+  <button class="btn sm" id="redo" title="Redo (⇧⌘/Ctrl+Shift+Z)" disabled>Redo</button>
   <p class="readout"><span id="rot-now">X 0° · Y 0° · Z 0°</span><span id="rot-delta"></span></p>
-  <p class="hint">Для поворота перетаскивайте кольца или:</p>
+  <p class="hint">Drag the rings to turn it, or:</p>
   <button class="btn sm" id="lay-face"
-          title="Нажмите эту кнопку, затем выберите грань, чтобы уложить её на стол. По умолчанию режим выключен, чтобы случайный щелчок не менял положение детали.">Уложить гранью на стол</button>
+          title="Click this, then click a face to set it flat on the bed. Off by default so a stray click can't re-lay the part.">Lay a face flat</button>
   <!-- Automatic strength view: no input. The faint frames show how the print is
        layered (they stay horizontal while the part turns inside them), and the note
        says where this orientation is weak. A printed part splits across its layers,
        so orientation IS strength -- this makes that visible as you rotate. -->
   <div class="layerview">
-    <label class="check layers-toggle" title="Показать горизонтальные слои печати вокруг детали.">
-      <input type="checkbox" id="show-layers">Показать слои
+    <label class="check layers-toggle" title="Show the horizontal print layers around the part.">
+      <input type="checkbox" id="show-layers">Show layers
     </label>
   </div>
   <div class="suggest">
     <div class="suggest-head">
-      <button class="btn sm" id="suggest-orient">Подобрать ориентацию</button>
+      <button class="btn sm" id="suggest-orient">Suggest orientation</button>
       <button class="disclosure" id="suggest-toggle" hidden aria-expanded="true"
-              aria-label="Свернуть варианты" title="Свернуть">&rsaquo;</button>
+              aria-label="Collapse suggestions" title="Collapse">&rsaquo;</button>
     </div>
     <div id="suggest-body">
       <p class="hint" id="suggest-note"></p>
@@ -122,18 +122,18 @@
        nothing that collides with click-to-lay. No fake "Nx stronger" number: the
        verdict is qualitative. -->
   <div class="loadfx">
-    <p class="loadfx-lede"><strong>Стрелка нагрузки</strong>: куда направлена нагрузка?</p>
-    <div class="strength-pad" role="group" aria-label="Направление нагрузки">
-      <button class="btn sm" id="load-up"    aria-label="Нагрузка направлена вверх">↑</button>
-      <button class="btn sm" id="load-down"  aria-label="Нагрузка направлена вниз">↓</button>
-      <button class="btn sm" id="load-left"  aria-label="Нагрузка направлена влево">←</button>
-      <button class="btn sm" id="load-right" aria-label="Нагрузка направлена вправо">→</button>
-      <button class="btn sm" id="load-front" aria-label="Нагрузка направлена к вам">⊙ к вам</button>
-      <button class="btn sm" id="load-back"  aria-label="Нагрузка направлена от вас">⊗ от вас</button>
+    <p class="loadfx-lede"><strong>Strength arrow</strong>: which way is it loaded?</p>
+    <div class="strength-pad" role="group" aria-label="Load direction">
+      <button class="btn sm" id="load-up"    aria-label="Load points up">↑</button>
+      <button class="btn sm" id="load-down"  aria-label="Load points down">↓</button>
+      <button class="btn sm" id="load-left"  aria-label="Load points left">←</button>
+      <button class="btn sm" id="load-right" aria-label="Load points right">→</button>
+      <button class="btn sm" id="load-front" aria-label="Load points toward you">⊙ front</button>
+      <button class="btn sm" id="load-back"  aria-label="Load points away from you">⊗ back</button>
     </div>
-    <button class="btn sm" id="load-clear" hidden>Сбросить</button>
+    <button class="btn sm" id="load-clear" hidden>Clear</button>
     <p class="load-verdict" id="load-note" hidden></p>
-    <button class="btn sm" id="load-suggest" hidden>Повернуть для максимальной прочности при печати</button>
+    <button class="btn sm" id="load-suggest" hidden>Turn to the strongest printable pose</button>
   </div>
 </aside>
 <!-- Spacer AFTER the panels so they top-anchor and grow DOWNWARD: content that
@@ -154,36 +154,36 @@
 <aside id="fin-opts" hidden>
   <!-- Grouped into collapsible sections (issue #41): the flat list ran past the
        bottom of a laptop screen and every feature lengthened it. Each section is a
-       plain <details>; app.js remembers which are open (localStorage, optional) and
+       plain <details>; ui/settings.js remembers which are open (localStorage, optional) and
        fills the .sec-sum line so a collapsed section still says what's set. A
        feature switch (Tines) lives in its section's header, so a disabled feature
        costs one line. Fields that don't apply in the current mode stay hidden, as
        before. Layout only: every control keeps its id, and nothing it builds moved. -->
   <details class="sec" data-sec="setup" open>
-    <summary><span class="sec-title">Настройки</span><span class="sec-sum" id="sum-setup"></span></summary>
+    <summary><span class="sec-title">Setup</span><span class="sec-sum" id="sum-setup"></span></summary>
     <!-- Material: PETG welds to a support far harder than the PLA the bite numbers
          were tuned for, so it needs more clearance everywhere. PLA is the default and
          keeps today's tight grip; PETG widens the support gap + fin-tine standoff,
          halves the tine bite, thins the bed pad, and turns the pad's tack into a gap.
-         Applied in app.js (applyMaterial), which also re-syncs the tunables below. -->
-    <label class="fld row" id="material-fld" title="Материал для печати. PETG сильнее сплавляется с поддержками, чем PLA, поэтому для него увеличены зазоры, уменьшено заглубление перемычек, а опорная площадка отделена зазором. Для PLA сохраняется более плотное сцепление.">
-      Материал
+         Applied in ui/settings.js (applyMaterial), which also re-syncs the tunables below. -->
+    <label class="fld row" id="material-fld" title="The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps, shrinks the tine bite, and gives the bed pad a gap instead of a bite. PLA keeps the tighter grip.">
+      Material
       <select id="material">
         <option value="pla">PLA</option>
         <option value="petg">PETG</option>
       </select>
     </label>
     <label class="fld">
-      Размещение
-      <select id="fin-mode" title="Способ размещения поддержек.">
+      Placement
+      <select id="fin-mode" title="Who places the support.">
         <!-- Two modes only, on purpose. AUTO (fins.js mode 'auto') is the default and
              does everything: a tined combined fin on each overhang face steep and flat
              enough to grip, a plain breakaway prop under the shallow/curved ones that
              can't take a fin. DRAW lets you place a fin by hand. The old fins-only
              "Combined fin" mode was dropped -- it built nothing (and said nothing) on
              parts with no fin sites, which just read as broken. -->
-        <option value="auto">Автоматически — разместить поддержки</option>
-        <option value="draw">Ручное размещение — расставить поддержки</option>
+        <option value="auto">Auto — place supports for me</option>
+        <option value="draw">Draw — place them by hand</option>
       </select>
     </label>
   </details>
@@ -193,8 +193,8 @@
        just stands under the overhang and snaps off. Same fin, tines or no tines. -->
   <details class="sec" data-sec="tines" open>
     <summary>
-      <label class="check sec-title" title="Перемычки сплавляют поддержку с деталью, фиксируя её. Если выключены, остаётся обычная отламываемая стенка.">
-        <input type="checkbox" id="tines" checked>Перемычки <span class="mut">фиксируют деталь</span>
+      <label class="check sec-title" title="Tines fuse the support to the part so it grips instead of just propping. Off = plain breakaway wall.">
+        <input type="checkbox" id="tines" checked>Tines <span class="mut">grip the part</span>
       </label>
       <span class="sec-sum" id="sum-tines"></span>
     </summary>
@@ -204,16 +204,16 @@
          for a tippy or tall part, at the cost of more marks on the supported face.
          Shown only when Tines is on. -->
     <label class="fld" id="tinegrip-fld"
-           title="Плотность соединительных перемычек. Слабая фиксация оставляет меньше следов (по умолчанию); минимальное число перемычек на стенке обеспечивает сцепление. Сильная — частые перемычки для надёжной фиксации неустойчивой или высокой детали.">
-      <span>Фиксация перемычками <span class="mut">слабая ⟶ сильная</span></span>
+           title="How tightly to space the grip tines. Light = fewest marks (default), a per-wall floor keeps grip; Firm = dense comb / max grip for a tippy or tall part.">
+      <span>Tine grip <span class="mut">light ⟶ firm</span></span>
       <input type="range" id="tine-density" min="0" max="100" step="5" value="0">
     </label>
     <!-- Layer height: the grip tines are exactly ONE layer tall so they print as one
          clean bead and BEND off instead of tearing. That only holds if this matches
          the layer height you actually slice at -- set it wrong and the tines slice
          into ~1.5 layers and leave welts. Shown only when Tines is on. -->
-    <label class="fld row" id="layerh-fld" title="Укажите высоту слоя из слайсера. Перемычки имеют высоту одного слоя и легко отламываются; при несовпадении настроек они рвутся и оставляют следы. По умолчанию 0.2 мм.">
-      <span>Высота слоя <span class="mut">мм</span></span>
+    <label class="fld row" id="layerh-fld" title="Set this to the layer height you slice at. The grip tines are one layer tall so they snap off clean; if this doesn't match your slicer, the tines tear and leave marks. Default 0.2mm.">
+      <span>Layer height <span class="mut">mm</span></span>
       <input type="number" id="layer-height" min="0.08" max="0.4" step="0.04" value="0.2">
     </label>
   </details>
@@ -228,35 +228,35 @@
        brim; Sure hold is the thicker pad tacked into the part; Custom exposes
        every pad number and is the only style that shows them. -->
   <details class="sec" data-sec="clearances">
-    <summary><span class="sec-title">Зазоры</span><span class="sec-sum" id="sum-clearances"></span></summary>
-    <label class="fld row" title="Зазор между верхом поддержки и деталью. Больший зазор облегчает снятие и улучшает поверхность; слишком большой перестаёт удерживать нависание. По умолчанию 0.2 мм.">
-      <span>Зазор поддержки <span class="mut">мм</span></span>
+    <summary><span class="sec-title">Clearances</span><span class="sec-sum" id="sum-clearances"></span></summary>
+    <label class="fld row" title="Clearance between a support top and the part. Bigger = cleaner surface / easier removal; too big stops holding the overhang. Default 0.2mm.">
+      <span>Support gap <span class="mut">mm</span></span>
       <input type="number" id="gap" min="0.1" max="0.4" step="0.05" value="0.2">
     </label>
-    <label class="fld row" title="Наклонённая деталь опирается на ребро и без площадки может оторваться от стола. Автоматически: лёгкая площадка или надёжная фиксация при контакте в точке либо на маленьком круглом основании (выбор показан). Лёгкая: один слой с зазором 0.12 мм от детали, снимается как кайма. Надёжная фиксация: толще, соединена с деталью, держит крепче, но труднее снимается. Свои настройки: задайте все параметры вручную.">
-      Опорная площадка
+    <label class="fld row" title="A tilted part rests on an edge and peels off the plate without a pad. Auto: Light, or Sure hold when the part meets the plate on a point or a small round foot (it shows which). Light: one layer, 0.12mm off the part, peels off like a brim. Sure hold: thicker and tacked into the part, holds harder but is harder to remove. Custom: set every number yourself.">
+      Bed pad
       <select id="bed-pad">
-        <option value="off">Выкл.</option>
-        <option value="auto" selected>Автоматически</option>
-        <option value="light">Лёгкая</option>
-        <option value="sure">Надёжная фиксация</option>
-        <option value="custom">Свои настройки</option>
+        <option value="off">Off</option>
+        <option value="auto" selected>Auto</option>
+        <option value="light">Light</option>
+        <option value="sure">Sure hold</option>
+        <option value="custom">Custom</option>
       </select>
     </label>
-    <label class="fld row" data-pad-custom hidden title="Толщина площадки. Со столом сцепляется только первый слой; дополнительные слои увеличивают жёсткость и затрудняют снятие.">
-      <span>Толщина площадки <span class="mut">мм</span></span>
+    <label class="fld row" data-pad-custom hidden title="How tall the pad is. Only the first layer grips the plate; more layers make it stiffer and harder to peel.">
+      <span>Pad thickness <span class="mut">mm</span></span>
       <input type="number" id="pad-h" min="0.1" max="1.0" step="0.05" value="0.2">
     </label>
-    <label class="fld row" data-pad-custom hidden title="Боковой зазор между площадкой и первым слоем детали. При 0.12 мм расплющивание первого слоя закрывает зазор, как у каймы в слайсере; больший зазор облегчает снятие, но ослабляет фиксацию. При зазоре менее 0.1 мм большинство слайсеров замыкают его, приваривая площадку. 0 = без зазора (зависит от сцепления площадки).">
-      <span>Зазор площадки <span class="mut">мм</span></span>
+    <label class="fld row" data-pad-custom hidden title="Sideways clearance between the pad and the part's first layer. 0.12mm lets first-layer squish just close it, the way a slicer brim holds; bigger comes off easier and holds less. Under 0.1mm most slicers merge the gap and the pad welds on. 0 = no gap (Pad grip decides).">
+      <span>Pad gap <span class="mut">mm</span></span>
       <input type="number" id="pad-gap" min="0" max="0.5" step="0.01" value="0.12">
     </label>
-    <label class="fld row" data-pad-custom hidden title="Контакт площадки с нижней поверхностью детали. Положительное значение заглубляет площадку для лучшей фиксации; 0 — вровень; отрицательное оставляет зазор для более чистого отделения.">
-      <span>Сцепление площадки <span class="mut">мм</span></span>
+    <label class="fld row" data-pad-custom hidden title="Where the pad meets the part's underside. Positive bites in to hold harder; 0 is flush; negative leaves a gap that snaps off cleaner.">
+      <span>Pad grip <span class="mut">mm</span></span>
       <input type="number" id="pad-grip" min="-0.2" max="0.3" step="0.05" value="0">
     </label>
-    <label class="fld row" data-pad-custom hidden title="Насколько площадка выступает за область контакта детали со столом. Больший выступ улучшает сцепление со столом.">
-      <span>Выступ площадки <span class="mut">мм</span></span>
+    <label class="fld row" data-pad-custom hidden title="How far the pad spreads past the part's contact with the plate. More spread = more plate grip.">
+      <span>Pad spread <span class="mut">mm</span></span>
       <input type="number" id="pad-margin" min="1" max="12" step="0.5" value="4">
     </label>
   </details>
@@ -269,39 +269,39 @@
        costs one line. -->
   <details class="sec" data-sec="sway">
     <summary>
-      <label class="check sec-title" title="Сужающиеся рёбра у вертикальных сторон высокой детали крепятся перемычками по всей высоте и предотвращают смещение и раскачивание при печати. В режиме ручного размещения нажмите на вертикальную сторону, чтобы добавить распорку.">
-        <input type="checkbox" id="sway">Распорки <span class="mut">высокие детали</span>
+      <label class="check sec-title" title="Stand tapered buttress ribs against the upright sides of a tall part, tied on with tines all the way up, so it doesn't drift or wobble as it grows. In Draw, click an upright side to add one.">
+        <input type="checkbox" id="sway">Sway braces <span class="mut">tall parts</span>
       </label>
       <span class="sec-sum" id="sum-sway"></span>
     </summary>
-    <label class="fld row" id="sway-from-fld" title="Высота начала перемычек распорки. 0 = фиксация по всей высоте; увеличьте значение, чтобы крепить только выше места, где деталь начинает раскачиваться.">
-      <span>Начало фиксации <span class="mut">мм от стола</span></span>
+    <label class="fld row" id="sway-from-fld" title="Height the brace tines start at. 0 = grip the whole height; raise it to tie on only above where the part starts to move.">
+      <span>Brace grip from <span class="mut">mm up</span></span>
       <input type="number" id="sway-from" min="0" max="2000" step="5" value="0">
     </label>
-    <label class="fld row" id="sway-spacing-fld" title="Расстояние по вертикали между перемычками распорки. Меньше — крепче фиксация, больше следов на поверхности. По умолчанию 6 мм.">
-      <span>Шаг перемычек <span class="mut">мм</span></span>
+    <label class="fld row" id="sway-spacing-fld" title="Vertical distance between brace tines. Smaller = held tighter, more marks on the side. Default 6mm.">
+      <span>Brace tine spacing <span class="mut">mm</span></span>
       <input type="number" id="sway-spacing" min="2" max="30" step="1" value="6">
     </label>
-    <label class="fld row" id="sway-depth-fld" title="Выступ распорки по столу в долях её высоты. Большая глубина повышает жёсткость и расход пластика. По умолчанию 15%.">
-      <span>Глубина распорки <span class="mut">% высоты</span></span>
+    <label class="fld row" id="sway-depth-fld" title="How far the brace reaches out at the bed, as a share of its height. Deeper = stiffer, more plastic. Default 15%.">
+      <span>Brace depth <span class="mut">% of height</span></span>
       <input type="number" id="sway-depth" min="5" max="50" step="1" value="15">
     </label>
   </details>
 
   <details class="sec" data-sec="walls" open>
-    <summary><span class="sec-title">Стенки</span><span class="sec-sum" id="sum-walls"></span></summary>
+    <summary><span class="sec-title">Walls</span><span class="sec-sum" id="sum-walls"></span></summary>
     <!-- Cutouts (issue #34): holes through the middle of each breakaway wall to
          save filament. Every hole has a pointed roof (>=45deg) so nothing bridges;
          the contact top, foot and ends stay solid, and a wall too short for a hole
          stays solid. Tined side fins are not cut -- their tines anchor all over. -->
-    <label class="fld row" title="Отверстия в высоких отламываемых стенках экономят пластик. Верхняя кромка, удерживающая деталь, основание и торцы остаются сплошными. Заострённый свод каждого отверстия печатается без мостов. Короткие стенки остаются сплошными.">
-      Вырезы
+    <label class="fld row" title="Cut holes through tall breakaway walls to save filament. The top edge that holds the part, the foot, and the wall's ends stay solid, and every hole has a pointed roof so it prints without bridging. Short walls stay solid.">
+      Cutouts
       <select id="cutout">
-        <option value="none">Нет</option>
-        <option value="diamond">Ромб</option>
-        <option value="triangle">Треугольник</option>
-        <option value="arch">Арка</option>
-        <option value="lattice">Решётка</option>
+        <option value="none">None</option>
+        <option value="diamond">Diamond</option>
+        <option value="triangle">Triangle</option>
+        <option value="arch">Arch</option>
+        <option value="lattice">Lattice</option>
       </select>
     </label>
     <!-- Wide-face row density: an overhang face too wide for one corner brace gets a
@@ -310,37 +310,36 @@
          A floor keeps at least one brace so a wide face is never left bare. Only
          bites on a broad face; narrow parts keep their 2-corner bracing. Auto only. -->
     <label class="fld" id="coverage-fld"
-           title="Частота рёбер под ШИРОКОЙ нависающей гранью. Среднее положение по умолчанию предотвращает провисание; сдвиг ВЛЕВО уменьшает число рёбер (у маленькой детали — до одного; при риске провисания появится предупреждение), ВПРАВО — увеличивает. На узкие детали не влияет.">
-      <span>Поддержка широкой грани <span class="mut">реже ⟶ чаще</span></span>
+           title="How densely to line a WIDE overhang face with fins. The middle is the anti-sag default; drag LEFT for fewer fins (a small part can go down to one — the readout warns if a broad face then risks sagging), RIGHT for more support. Narrow parts are unaffected.">
+      <span>Wide-face coverage <span class="mut">sparse ⟶ dense</span></span>
       <input type="range" id="coverage" min="0" max="100" step="5" value="50">
     </label>
     <!-- Suggest + Draw mix: place extra walls by hand where auto-placement missed.
-         Shown only in Suggest mode (toggled in app.js). Per-fin removal (Auto only,
-         shown via app.js syncRemoveUI): arm a click-to-remove mode, hover lights a
+         Shown only in Suggest mode (toggled in ui/settings.js). Per-fin removal (Auto only,
+         shown via ui/remove.js syncRemoveUI): arm a click-to-remove mode, hover lights a
          fin red, click drops just that one; Restore all brings every one back. -->
     <button class="btn sm" id="augment-toggle" hidden
-            title="Добавить отламываемые стенки вручную к автоматически размещённым.">+ Добавить стенки вручную</button>
+            title="Place extra breakaway walls by hand, on top of the auto-placed ones.">+ Add walls by hand</button>
     <div id="remove-fins-controls" hidden>
       <div class="draw-btns">
         <button class="btn sm" id="remove-fins-toggle" hidden
-                title="Нажмите на ребро, чтобы удалить его. Esc или правая кнопка мыши отменяет режим.">Удалить рёбра</button>
+                title="Click a fin to remove just that one. Esc or right-click cancels.">Remove fins</button>
         <button class="btn sm" id="restore-fins" hidden
-                title="Восстановить все рёбра, удалённые в этой ориентации.">Восстановить все</button>
+                title="Bring back every fin removed in this orientation.">Restore all</button>
       </div>
     </div>
   </details>
 
   <!-- Draw controls: shown while placing by hand, outside the sections so the
-       hint and Undo can never be collapsed away mid-draw. Hint text is set per
-       mode in app.js (syncDrawControls). -->
+       hint and Clear can never be collapsed away mid-draw. Hint text is set per
+       mode in ui/walls.js (syncDrawControls). -->
   <div id="draw-controls" hidden>
-    <p class="draw-hint" id="draw-hint">Нажмите на <strong>нависающую грань</strong> — она подсвечивается
-      зелёным, если здесь можно разместить ребро поддержки.</p>
+    <p class="draw-hint" id="draw-hint">Click an <strong>overhang face</strong> — it lights
+      up green when a fin can go there — to stand a support fin against it.</p>
     <div class="draw-btns">
       <button class="btn sm" id="draw-remove" hidden
-              title="Удалить выбранную поддержку (также можно нажать Delete или Backspace).">Удалить выбранное</button>
-      <button class="btn sm" id="draw-undo">Отменить</button>
-      <button class="btn sm" id="draw-clear">Удалить все</button>
+              title="Remove the support you clicked (Delete or Backspace also works).">Remove selected</button>
+      <button class="btn sm" id="draw-clear">Clear all</button>
     </div>
   </div>
 </aside>
@@ -361,9 +360,9 @@
   <p class="over-warn" id="over-warn"></p>
   <div id="receipt" hidden>
     <span id="r-grams">—</span>
-    <span class="r-unit">на поддержки</span>
-    <button type="button" class="r-info" id="r-info" aria-label="Об этом значении"
-       title="Масса рассчитана для PLA и учитывает только добавленные рёбра и площадку при почти сплошной печати; расчёт проверен по объёму рёбер. В тестовых отпечатках отламываемые рёбра расходовали на 20–45% меньше пластика и печатались на ~30% быстрее поддержек слайсера.">i</button>
+    <span class="r-unit">of support material added</span>
+    <button type="button" class="r-info" id="r-info" aria-label="About this number"
+       title="Grams assume PLA and count only the fins + pad the tool adds, printed near-solid, cross-checked against the builder's fin volume. In test prints, breakaway fins used 20–45% less plastic and printed ~30% faster than slicer supports.">i</button>
   </div>
 </aside>
 </div><!-- /right-rail -->
@@ -372,24 +371,24 @@
 
 <div id="drop">
   <div class="inner">
-    <p class="big">Печатайте без поддержек слайсера</p>
-    <p class="lede">Поверните деталь в удобную для печати ориентацию, и Support Fins добавит
-      отламываемые поддержки прямо в STL. Результат одинаков на любом принтере и в любом
-      слайсере с выключенными поддержками.</p>
+    <p class="big">Print it support-free, in any slicer</p>
+    <p class="lede">Rotate a part however it prints best, and Support Fins bakes the
+      breakaway supports right into the STL. It prints the same on any machine, in any
+      slicer, with supports turned off.</p>
     <ol class="steps">
-      <li><strong>Импортируйте STL, 3MF или STEP.</strong> Перетащите файл в любое место этой страницы.</li>
-      <li><strong>Поверните деталь.</strong> Красным отмечены поверхности, которым нужна поддержка.</li>
-      <li><strong>Экспортируйте.</strong> Рёбра уже в модели — поддержки слайсера не нужны.</li>
+      <li><strong>Import an STL, 3MF or STEP.</strong> Drop it anywhere on this page.</li>
+      <li><strong>Rotate it.</strong> Red marks every surface that needs support.</li>
+      <li><strong>Export.</strong> Fins come baked in — no slicer supports needed.</li>
     </ol>
-    <p class="small">При открытии 3MF Bambu Studio и PrusaSlicer могут сообщить об отсутствии
-      настроек и загрузить только геометрию — это нормально. Файл содержит геометрию
-      без профиля слайсера и открывается одинаково во всех слайсерах;
-      ориентация и размеры детали сохраняются. Нарезайте с выключенными поддержками.</p>
-    <p class="small">Файлы никуда не отправляются. Обработка выполняется в этой вкладке,
-      и файл не покидает ваш компьютер.</p>
-    <p class="kofi-line">Бесплатно и с открытым исходным кодом. Если проект спасёт вашу печать,
-      <a class="kofi" href="https://ko-fi.com/matthewtrahan" target="_blank" rel="noopener">угостите
-      автора кофе&nbsp;☕</a>.</p>
+    <p class="small">Opening the 3MF, Bambu Studio and PrusaSlicer may note it has
+      “no config” and load the geometry only — that’s expected. The file is pure
+      geometry with no slicer profile baked in, so it opens the same in every slicer;
+      your part comes in correctly oriented and sized. Just slice with supports off.</p>
+    <p class="small">Nothing is uploaded. The file is read inside this tab and never
+      leaves your machine.</p>
+    <p class="kofi-line">Free and open source. If it ever saves you a print,
+      <a class="kofi" href="https://ko-fi.com/matthewtrahan" target="_blank" rel="noopener">buy
+      me a coffee&nbsp;☕</a>.</p>
   </div>
 </div>
 
@@ -399,20 +398,21 @@
      only when a file has more than one object; single-object files skip it. -->
 <div id="picker" hidden>
   <div class="picker-panel" role="dialog" aria-modal="true" aria-labelledby="picker-title">
-    <h2 id="picker-title">В файле несколько объектов</h2>
-    <p class="picker-sub">Выберите объект для добавления рёбер. Отметьте несколько, чтобы объединить
-      их в одну деталь.</p>
+    <h2 id="picker-title">This file has several objects</h2>
+    <p class="picker-sub">Pick the one to add fins to. Check more than one to merge
+      them into a single part.</p>
     <ul id="picker-list"></ul>
     <div class="picker-foot">
       <span id="picker-hint" class="note"></span>
       <span class="picker-actions">
-        <button class="btn" id="picker-cancel">Отмена</button>
-        <button class="btn primary" id="picker-load">Загрузить</button>
+        <button class="btn" id="picker-cancel">Cancel</button>
+        <button class="btn primary" id="picker-load">Load</button>
       </span>
     </div>
   </div>
 </div>
 
+<script type="module" src="./locales/ru/runtime.js"></script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

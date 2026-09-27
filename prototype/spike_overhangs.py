@@ -93,8 +93,8 @@ def analyse(path):
     z_bed = 0.0
 
     print(f"\n{'='*72}\n{path.split('/')[-1]}")
-    print(f"  {len(mesh.faces):,} граней, габариты {np.round(mesh.extents,1)} мм, "
-          f"замкнутость={mesh.is_watertight}")
+    print(f"  {len(mesh.faces):,} faces, bbox {np.round(mesh.extents,1)} mm, "
+          f"watertight={mesh.is_watertight}")
 
     nz = mesh.face_normals[:, 2]
     tri_z = mesh.triangles[:, :, 2]
@@ -102,10 +102,10 @@ def analyse(path):
     over = (nz < OVERHANG_CUT) & (~on_bed)
     idx = np.flatnonzero(over)
     a_over = float(mesh.area_faces[idx].sum())
-    print(f"  нависающих граней: {len(idx):,} / {len(mesh.faces):,} "
-          f"({100*len(idx)/len(mesh.faces):.1f}%), площадь {a_over:.0f} мм^2")
+    print(f"  overhang faces: {len(idx):,} / {len(mesh.faces):,} "
+          f"({100*len(idx)/len(mesh.faces):.1f}%), area {a_over:.0f} mm^2")
     if len(idx) == 0:
-        print("  -> в этой ориентации печатается без поддержек. Действия не нужны.")
+        print("  -> designed support-free in this orientation. nothing to do.")
         return
 
     # cluster contiguous overhang faces into regions
@@ -113,7 +113,7 @@ def analyse(path):
     keep = over[adj[:, 0]] & over[adj[:, 1]]
     comps = trimesh.graph.connected_components(adj[keep], nodes=idx)
     regions = [c for c in comps if mesh.area_faces[c].sum() >= MIN_REGION_AREA]
-    print(f"  области: {len(comps)} исходных -> {len(regions)} площадью больше {MIN_REGION_AREA} мм^2")
+    print(f"  regions: {len(comps)} raw -> {len(regions)} above {MIN_REGION_AREA} mm^2")
 
     stats = {'bed': 0, 'part': 0, 'straight': 0, 'curved': 0, 'stub': 0, 'noline': 0}
     rows = []
@@ -149,22 +149,22 @@ def analyse(path):
             stats['curved'] += 1
         rows.append((area, reach, blocked, span, rms))
 
-    print(f"  {'площ. мм^2':>10} {'доступ':>6} {'блокир.':>8} {'пролёт мм':>8} {'СКО мм':>7}")
+    print(f"  {'area mm^2':>10} {'reach':>6} {'blocked':>8} {'span mm':>8} {'RMS mm':>7}")
     for area, reach, blocked, span, rms in rows[:10]:
-        s = f"{span:8.1f}" if span is not None else "     н/д"
-        r = f"{rms:7.2f}" if rms is not None else "    н/д"
+        s = f"{span:8.1f}" if span is not None else "     n/a"
+        r = f"{rms:7.2f}" if rms is not None else "    n/a"
         print(f"  {area:10.0f} {reach:>6} {blocked:8.0%} {s} {r}")
     if len(rows) > 10:
-        print(f"  ... {len(rows)-10} ещё")
+        print(f"  ... {len(rows)-10} more")
 
     n = max(1, len(regions))
-    print(f"  ИТОГ: доступ к столу {stats['bed']}/{n}  |  над деталью {stats['part']}/{n}"
-          f"  |  достаточно прямые {stats['straight']}/{n}"
-          f"  кривые {stats['curved']}  короткие {stats['stub']}  без линии {stats['noline']}")
+    print(f"  VERDICT: bed-reachable {stats['bed']}/{n}  |  over-part {stats['part']}/{n}"
+          f"  |  straight-enough {stats['straight']}/{n}"
+          f"  curved {stats['curved']}  stub {stats['stub']}  no-line {stats['noline']}")
     servable = sum(1 for a, reach, b, span, rms in rows
                    if reach == 'bed' and span is not None and span >= 7.0
                    and rms is not None and rms <= STRAIGHT_TOL)
-    print(f"  ** breakaway_wall() подходит для {servable}/{n} областей без изменений "
+    print(f"  ** breakaway_wall() can serve {servable}/{n} regions as-is "
           f"({100*servable/n:.0f}%) **")
 
 
@@ -173,4 +173,4 @@ if __name__ == '__main__':
         try:
             analyse(p)
         except Exception as e:
-            print(f"\n{p}: ОШИБКА {type(e).__name__}: {e}")
+            print(f"\n{p}: FAILED {type(e).__name__}: {e}")

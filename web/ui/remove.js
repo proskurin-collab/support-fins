@@ -1,18 +1,17 @@
 /**
  * Per-fin removal (Auto): click a fin to drop just that one.
  *
- * Until the fin build has its own module, the fin mesh, the modes and the
- * readout still live in app.js, so this reaches back there for them. Everything
+ * The fin mesh lives in finbuild.js and the modes in settings.js. Everything
  * the removal feature itself owns -- records, signatures, the hover overlay,
- * remove mode -- lives here, and app.js only reads it.
+ * remove mode -- lives here, and the other modules only read it.
  */
 import * as THREE from 'three';
 import { el } from './dom.js';
 import { scene, renderer, camera, raycaster, pointer, meshFrom } from './scene.js';
-import {
-  part, lastBuilt, finMesh, finsVisible, finMode, drawAugment, setDrawAugment, setFinTris,
-  updateFit, setGizmo, syncAugmentUI,
-} from '../app.js';
+import { setGizmo } from './pose.js';
+import { part, updateFit } from './part.js';
+import { finsVisible, finMode, drawAugment, setDrawAugment, syncAugmentUI } from './settings.js';
+import { lastBuilt, finMesh, setFinTris } from './finbuild.js';
 import { clearPreview, syncDrawControls } from './walls.js';
 import { updateReadout } from './readout.js';
 import { histPush } from './history.js';
@@ -130,7 +129,7 @@ export function syncRemoveUI() {
   el('remove-fins-controls').hidden = !show;
   el('remove-fins-toggle').hidden = !show;
   el('remove-fins-toggle').classList.toggle('primary', removeMode);
-  el('remove-fins-toggle').textContent = removeMode ? 'Выберите ребро — Esc завершить' : 'Удалить рёбра';
+  el('remove-fins-toggle').textContent = removeMode ? 'Click a fin — Esc done' : 'Remove fins';
   // Gate on removedIds (fins removed in THIS orientation), not the global
   // removedSigs -- otherwise a removal made in another pose shows a Restore button
   // that maps to nothing here (and whose tooltip promises "this orientation").

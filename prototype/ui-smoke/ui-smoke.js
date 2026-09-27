@@ -57,7 +57,6 @@ async function settle() {
   for (let i = 0; i < 200; i++) {
     const busy = await page.evaluate(() =>
       document.getElementById('s-fins')?.textContent === 'generating supports…'
-      || document.getElementById('s-fins')?.textContent === 'создание поддержек…'
       || document.getElementById('spinner').classList.contains('show'));
     if (!busy) break;
     await sleep(100);
@@ -207,7 +206,7 @@ try {
   await page.goto(`${base}/?stl=${model}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__sf?.part, { timeout: 30000 });
   if (!(await page.evaluate(() => !!window.__sf.camera))) {
-    throw new Error('в этой сборке нет window.__sf.camera (тесту она нужна для наведения нажатий)');
+    throw new Error('this build has no window.__sf.camera (the harness needs it to aim clicks)');
   }
   await snap('loaded');
 
@@ -247,13 +246,11 @@ try {
   await setVal('cutout', 'diamond'); await snap('cutout');
   await setVal('coverage', '80', 'input'); await snap('coverage-80');
 
-  // Draw mode: a wall across the overhang, then undo / clear / their undos.
+  // Draw mode: a wall across the overhang, then clear and its undo.
   await setVal('fin-mode', 'draw'); await snap('draw-mode');
   await clickFace(extremeOverhang(1)); await snap('draw-first');
   await clickFace(extremeOverhang(-1)); await snap('draw-second');
   await page.keyboard.press('Escape'); await snap('draw-esc');
-  await click('draw-undo'); await snap('draw-undo');
-  await click('undo'); await snap('undo-draw-undo');
   await click('draw-clear'); await snap('draw-clear');
   await click('undo'); await snap('undo-clear');
 
@@ -370,7 +367,7 @@ try {
   // row, then collapse and re-expand the results.
   const ranked = () => page.waitForFunction(() => {
     const b = document.getElementById('suggest-orient');
-    return !b.disabled && (b.textContent === 'Suggest orientation' || b.textContent === 'Подобрать ориентацию');
+    return !b.disabled && b.textContent === 'Suggest orientation';
   }, { timeout: 60000 });
   for (const m of ['tube', 'sphere', 'needle']) {
     await importFile(join(MODELS, `${m}.stl`), `${m}.stl`);
@@ -452,6 +449,20 @@ try {
   await clickFace(extremeOverhang(1)); await snap('half-wall');
   const half = await screenOf('return [0, 0, 0];');
   await page.mouse.click(half.x, half.y, { button: 'right' }); await snap('half-wall-rightclick');
+
+  // Leftover UI: Undo while "Lay a face flat" is armed, then a new part loaded
+  // with lay-flat and "+ Add walls by hand" armed and a Suggest list up. The new
+  // part must come in with every one of those reset.
+  await click('rot-x'); await settle();
+  await click('lay-face'); await snap('lay-armed-before-undo');
+  await click('undo'); await snap('undo-while-lay-armed');
+  await setVal('fin-mode', 'auto'); await settle();
+  await click('suggest-orient'); await sleep(100); await ranked();
+  await click('augment-toggle');
+  await click('lay-face'); await snap('armed-before-load');
+  const other = model.endsWith('/cone.stl') ? 'lbracket.stl' : 'cone.stl';
+  await importFile(join(MODELS, other), other);
+  await snap('load-while-armed');
 } catch (err) {
   errors.push(`harness: ${err.message}`);
 }

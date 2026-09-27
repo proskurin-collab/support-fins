@@ -8,7 +8,7 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { readThreeMF } from '../threemf.js';
 import { isStep, readStep, warmStep } from '../step.js';
 import { el } from './dom.js';
-import { part, setPart } from '../app.js';
+import { part, setPart } from './part.js';
 
 export let importNote = '';   // what the 3MF/STEP reader had to decide (merge, unit, skips)
 
@@ -76,7 +76,7 @@ function pickObjects(objects) {
     const meta = document.createElement('span');
     meta.className = 'pk-meta';
     const s = o.bbox.size.map((v) => Math.round(v));
-    meta.textContent = `${o.tris.toLocaleString()} треуг. · ${s[0]}×${s[1]}×${s[2]} мм`;
+    meta.textContent = `${o.tris.toLocaleString()} tris · ${s[0]}×${s[1]}×${s[2]} mm`;
     label.append(cb, name, meta);
     li.append(label);
     list.append(li);
@@ -87,8 +87,8 @@ function pickObjects(objects) {
   function refresh() {
     const n = selected().length;
     loadBtn.disabled = n === 0;
-    loadBtn.textContent = n > 1 ? `Объединить ${n} и загрузить` : 'Загрузить';
-    hint.textContent = n > 1 ? `Выбрано: ${n} — будут объединены в одну деталь` : '';
+    loadBtn.textContent = n > 1 ? `Merge ${n} & load` : 'Load';
+    hint.textContent = n > 1 ? `${n} selected — merged into one part` : '';
   }
   refresh();
   modal.hidden = false;
@@ -141,13 +141,13 @@ async function parseModel(buffer) {
   const notes = [];
   if (objects.length > 1) {
     notes.push(chosen.length === 1
-      ? `импортирован объект «${chosen[0].name}»; всего объектов: ${objects.length}`
-      : `объединено в одну деталь: ${chosen.length} из ${objects.length} объектов`);
+      ? `imported “${chosen[0].name}” of ${objects.length} objects`
+      : `merged ${chosen.length} of ${objects.length} objects into one part`);
   } else if (chosen[0].meshes > 1) {
-    notes.push(`объединено тел в одну деталь: ${chosen[0].meshes}`);
+    notes.push(`merged ${chosen[0].meshes} bodies into one part`);
   }
-  if (skipped) notes.push(`пропущено тел поддержек или непечатаемых тел: ${skipped}${skipped === 1 ? '' : ''}`);
-  if (unit && unit !== 'millimeter') notes.push(`единицы ${unit} переведены в мм`);
+  if (skipped) notes.push(`ignored ${skipped} support/non-printable ${skipped === 1 ? 'body' : 'bodies'}`);
+  if (unit && unit !== 'millimeter') notes.push(`converted from ${unit} to mm`);
   importNote = notes.length ? `3MF: ${notes.join('; ')}.` : '';
 
   return geometry;
@@ -160,7 +160,7 @@ async function parseModel(buffer) {
 async function parseStep(buffer) {
   const spinner = el('spinner');
   const label = spinner.lastChild.textContent;
-  spinner.lastChild.textContent = 'чтение STEP…';
+  spinner.lastChild.textContent = 'reading STEP…';
   spinner.classList.add('show');
   let objects;
   try {
@@ -175,11 +175,11 @@ async function parseStep(buffer) {
     chosen = await pickObjects(objects);
     if (!chosen) return null;
   }
-  const notes = ['триангуляция с точностью 0.01 мм'];
+  const notes = ['tessellated at 0.01 mm'];
   if (objects.length > 1) {
     notes.unshift(chosen.length === 1
-      ? `импортирован объект «${chosen[0].name}»; всего объектов: ${objects.length}`
-      : `объединено в одну деталь: ${chosen.length} из ${objects.length} объектов`);
+      ? `imported “${chosen[0].name}” of ${objects.length} objects`
+      : `merged ${chosen.length} of ${objects.length} objects into one part`);
   }
   importNote = `STEP: ${notes.join('; ')}.`;
   return geometryFromPositions(mergeObjectPositions(chosen));
@@ -192,11 +192,16 @@ async function loadFile(file) {
     if (geometry) setPart(geometry, file.name);
   } catch (err) {
     console.error(err);
-    alert(`Не удалось прочитать ${file.name}:\n${err.message}`);
+    alert(`Could not read ${file.name}:\n${err.message}`);
   }
 }
 
-el('file').addEventListener('change', (e) => loadFile(e.target.files[0]));
+// Clear the input once the file is taken: otherwise choosing the SAME file again
+// (after cancelling its object picker, say) changes nothing and fires no change.
+el('file').addEventListener('change', (e) => {
+  loadFile(e.target.files[0]);
+  e.target.value = '';
+});
 // Reaching for a file is the cue to start loading the STEP kernel: it downloads
 // while the user is still in the file dialog (or mid-drag), not after they drop.
 el('file').addEventListener('click', warmStep);

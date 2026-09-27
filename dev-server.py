@@ -43,23 +43,23 @@ def _lan_ip():
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Сервер разработки Support Fins без кэширования.',
-        epilog='Укажите адрес 0.0.0.0 (или ::), чтобы открыть сервер с других устройств локальной сети.',
+        description='Support Fins no-cache dev server.',
+        epilog='Bind 0.0.0.0 (or ::) to reach the server from other devices on your LAN.',
     )
     parser.add_argument('port', nargs='?', type=int, default=8731,
-                        help='порт сервера (по умолчанию: 8731)')
+                        help='port to listen on (default: 8731)')
     parser.add_argument('--host', default='127.0.0.1',
-                        help='адрес привязки (по умолчанию: 127.0.0.1; 0.0.0.0 открывает доступ из локальной сети)')
+                        help='address to bind (default: 127.0.0.1; 0.0.0.0 exposes it to the LAN)')
     args = parser.parse_args()
 
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web')  # serve ./web from the repo root
     handler = functools.partial(NoCacheHandler, directory=root)
-    print(f"сервер разработки support-fins: http://localhost:{args.port}/  (каталог {root})")
+    print(f"support-fins dev server: http://localhost:{args.port}/  (serving {root})")
     wildcard = args.host in ('0.0.0.0', '::', '')
     if wildcard:
         ip = _lan_ip()
         if ip:
-            print(f"На других устройствах локальной сети откройте http://{ip}:{args.port}/")
+            print(f"On other devices on your LAN, open http://{ip}:{args.port}/")
     bind = '' if wildcard else args.host
     sys.stdout.flush()  # ensure the lines above land in a redirected log immediately (e.g. headless RPi)
     http.server.ThreadingHTTPServer((bind, args.port), handler).serve_forever()

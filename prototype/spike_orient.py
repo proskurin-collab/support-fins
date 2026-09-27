@@ -90,9 +90,9 @@ def candidates(mesh, tilts=(0, 30, 45)):
 def main(src):
     mesh = trimesh.load(src, force='mesh')
     elong, axis = elongation(mesh)
-    print(f"\n{'='*90}\n{src.split('/')[-1]}   габариты {np.round(mesh.extents,1)}   "
-          f"удлинённость {elong:.2f}  -> оценка прочности "
-          f"{'ПРИМЕНИМА' if elong >= 1.5 else 'НЕНАДЁЖНА (объёмная форма, направление нагрузки неизвестно)'}")
+    print(f"\n{'='*90}\n{src.split('/')[-1]}   bbox {np.round(mesh.extents,1)}   "
+          f"elongation {elong:.2f}  -> strength proxy "
+          f"{'APPLIES' if elong >= 1.5 else 'UNRELIABLE (blobby, load direction unknown)'}")
 
     rows = []
     for name, tilt, prob, m in candidates(mesh):
@@ -104,15 +104,15 @@ def main(src):
         long_from_vert = np.degrees(np.arccos(abs(np.clip(ax_now[2], -1, 1))))
         rows.append((name, d, long_from_vert, prob))
 
-    print(f"  {'ориентация':16} {'высота':>7} {'стол мм2':>8} {'нависание':>9} "
-          f"{'области':>8} {'рёбра':>10} {'длин. ось':>9}  {'опора':>5}")
+    print(f"  {'orientation':16} {'height':>7} {'bed mm2':>8} {'overhang':>9} "
+          f"{'regions':>8} {'real fins':>10} {'longaxis':>9}  {'rest':>5}")
     best = None
     for name, d, lav, prob in rows:
         flag = ''
         if d['regions'] and d['real_fins'] == 0:
-            flag = ' <- все нависания слишком короткие для рёбер'
+            flag = ' <- all overhangs too short to fin'
         print(f"  {name:16} {d['height']:7.1f} {d['bed']:8.0f} {d['over']:9.0f} "
-              f"{d['regions']:8d} {d['real_fins']:10d} {lav:8.0f}° {prob:5.2f}{flag}")
+              f"{d['regions']:8d} {d['real_fins']:10d} {lav:8.0f}d {prob:5.2f}{flag}")
         # score: want long axis lying down, few overhangs, and any overhangs FINNABLE
         s = (lav / 90.0) * 2.0 - d['over'] / 500.0 - d['height'] / 100.0
         if d['regions'] and d['real_fins'] == 0:
@@ -122,10 +122,10 @@ def main(src):
 
     name, s, lav, d = best
     conf = 'HIGH' if elong >= 1.5 else 'LOW'
-    print(f"  => рекомендуется {name}: длинная ось {lav:.0f}град. от вертикали, "
-          f"{d['real_fins']}/{d['regions']} нависаний допускают рёбра, {d['height']:.0f}мм высотой")
-    print(f"  => ДОСТОВЕРНОСТЬ {conf}"
-          + ('' if conf == 'HIGH' else '  (показывать как подсказку; решение остаётся за пользователем)'))
+    print(f"  => suggests {name}: long axis {lav:.0f}deg from vertical, "
+          f"{d['real_fins']}/{d['regions']} overhangs finnable, {d['height']:.0f}mm tall")
+    print(f"  => CONFIDENCE {conf}"
+          + ('' if conf == 'HIGH' else '  (present as a hint, keep the user in the driver seat)'))
 
 
 if __name__ == '__main__':
@@ -133,4 +133,4 @@ if __name__ == '__main__':
         try:
             main(p)
         except Exception as e:
-            print(f"\n{p}: ОШИБКА {type(e).__name__}: {e}")
+            print(f"\n{p}: FAILED {type(e).__name__}: {e}")

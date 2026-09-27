@@ -1,139 +1,135 @@
-# Support Fins — плагин OrcaSlicer
+# Support Fins — OrcaSlicer plugin lane
 
-Дополнение к [printfins.com](https://printfins.com) для **системы Python-плагинов
-OrcaSlicer** (встроенный CPython; плагины PEP 723 из одного `.py` или `.whl`).
+Companion to [printfins.com](https://printfins.com), targeting **OrcaSlicer's Python
+plugin system** (embedded CPython; single-`.py` PEP 723 plugins or `.whl`).
 
-## Рёбра при нарезке (`src/support_fins_orca.py`) — запись возможна
+## Slice-time fins (`src/support_fins_orca.py`) — the write path exists
 
-В таблице ниже верно указано, что API *модели* Orca доступен только для чтения. Но
-**конвейер нарезки допускает запись**: на этапе `Step.posSlice` плагин может заменить
-полигоны среза каждого слоя (`LayerRegion.slices.set/append`, затем `Layer.make_slices()`),
-и Orca учтёт изменения в периметрах, заполнении и G-code. Собственные примеры Orca
-делают именно это (`sandboxes/orca_inset_plugin_any.py`, `orca_twistify_plugin_any.py`).
-Это также не путь через траектории поддержек: на этапе `posSlice` ещё нет траекторий,
-только послойные полигоны, которые получились бы из STL с рёбрами.
+The table below is right that Orca's *model* API is read-only. But the
+**slicing pipeline is writable**: at `Step.posSlice` a plugin can replace each
+layer's slice polygons (`LayerRegion.slices.set/append`, then
+`Layer.make_slices()`), and Orca carries the edit through perimeters, infill and
+G-code. Orca's own samples do exactly this (`sandboxes/orca_inset_plugin_any.py`,
+`orca_twistify_plugin_any.py`). This isn't the support-toolpath route either:
+at `posSlice` there are no toolpaths yet, only the per-layer polygons a finned STL
+would have produced.
 
-Поэтому плагин:
+So this plugin:
 
-1. читает деталь во время нарезки Orca (объёмы `PrintObject.model_object()` через
+1. reads the part as Orca slices it (`PrintObject.model_object()` volumes through
    `PrintObject.trafo()`),
-2. запускает **неизменённый движок сайта** — `web/*.js`, собранные esbuild и исполняемые
-   во встроенном V8 ([mini-racer](https://pypi.org/project/mini-racer/)),
-3. сечёт оболочки рёбер на высоте `slice_z` каждого слоя и объединяет их со слоем
-   (собственный `union_ex` Orca соединяет перемычки с деталью).
+2. runs **the website's engine, unmodified** — `web/*.js` bundled with esbuild and
+   executed in an embedded V8 ([mini-racer](https://pypi.org/project/mini-racer/)).
+   The bundle and its bridge are shared with the other plugins
+   ([`plugins/shared/`](../shared/README.md)),
+3. cross-sections the fin shells at every layer's `slice_z` and merges them into the
+   layer (Orca's own `union_ex` fuses the tines into the part).
 
-Экспорт, повторный импорт и API добавления рёбер на стол не нужны. Поверните деталь,
-нарежьте заново — рёбра последуют за ней. Детали с включённой настройкой Orca
-**Включить поддержки (Enable support)** пропускаются: переключатель поддержек объекта
-выбирает рёбра или поддержки Orca.
+No export, no re-import, no "fins land on the plate" API needed. Rotate the part,
+re-slice, and the fins follow. Parts with Orca's **Enable support** on are skipped,
+so the per-object support toggle picks fins vs Orca supports.
 
 ```
 python3 plugins/orca/build.py                   # -> build/support_fins_orca.py (one file, ~100 KB)
-deno test --allow-read tests/ plugins/orca/tests/
+deno test --allow-read tests/ plugins/shared/tests/
 python3 -m pytest -q plugins/orca/tests/        # needs numpy, trimesh, scipy, shapely, rtree, networkx, mini-racer
 ```
 
-Установка и включение (ночная сборка OrcaSlicer 2.5):
+Install and turn on (OrcaSlicer 2.5 nightly):
 
-1. Поместите `build/support_fins_orca.py` в `<data_dir>/orca_plugins/SupportFins/`
-   (или Плагины ▸ Установить плагин / Plugins ▸ Install plugin). Откройте **Плагины (Plugins)**
-   в главном меню и отметьте **Support Fins**. Встроенный `uv` Orca при первом включении
-   установит `numpy` и `mini-racer` из заголовка PEP 723.
-2. Переключите настройки процесса в **Расширенные (Advanced)**, откройте
-   **Прочее ▸ Плагин конвейера нарезки ▸ Добавить плагин (Others ▸ Slicing Pipeline Plugin ▸ Add plugin)**
-   и выберите **Support Fins**. Одного включения плагина недостаточно: он должен быть указан
-   в профиле процесса.
-3. Нарежьте. Первая нарезка в каждом сеансе Orca покажет несколько **запросов разрешений
-   плагина (Plugin permission request)**: чтение библиотечных файлов Python и `socket.__new__`.
-   Последний нужен локальному каналу цикла asyncio, который создаёт mini-racer, а не доступу
-   к сети. Ответьте «Да».
+1. Drop `build/support_fins_orca.py` into `<data_dir>/orca_plugins/SupportFins/`
+   (or Plugins ▸ Install plugin). Open **Plugins** from the main menu and tick
+   **Support Fins**. Orca's bundled `uv` installs `numpy` and `mini-racer` from the
+   PEP 723 header on that first activation.
+2. Switch the process settings to **Advanced**, open **Others ▸ Slicing Pipeline
+   Plugin ▸ Add plugin** and pick **Support Fins**. Activating the plugin alone does
+   nothing; the process preset has to reference it.
+3. Slice. The first slice of each Orca session shows a few **Plugin permission
+   request** prompts (reading Python's own library files, and `socket.__new__`,
+   which is the local self-pipe of the asyncio loop mini-racer creates, not network
+   access). Answer Yes.
 
-### Что фиксируют автономные тесты
+### What the tests pin (offline)
 
-* `tests/entry.test.js` — путь Orca размещает такие же рёбра, как сайт, на той же
-  ориентированной детали в любом месте стола; сетка замкнута, стенки не касаются детали,
-  перемычки входят в неё.
-* `tests/test_plugin.py` — с `tests/fake_orca.py` (те же формы и единицы, что у реальных
-  привязок): островки каждого слоя совпадают с **независимым** срезом детали и рёбер через
-  trimesh+shapely, включая смещение от центра и компенсацию усадки XY/Z. Детали с поддержками,
-  другие этапы и выключенная конфигурация не меняются; ошибки возвращаются как
-  `RecoverableError`, без исключения посреди нарезки.
-* `ENGINE-SENSITIVITY.md` — обнаруженная особенность исходного движка (перемычки смещаются
-  при шуме 1e-13 мм) и способ её нейтрализации в плагине.
+* `plugins/shared/tests/entry.test.js` — the plugin entry places the same fins as the
+  website on the same posed part, anywhere on the plate; watertight; walls clear the
+  part; tines bite.
+* `tests/test_plugin.py` — against `tests/fake_orca.py` (same shapes/units as the real
+  bindings): every layer's islands match an **independent** trimesh+shapely slice of
+  part + fins, including off-centre placement and XY/Z shrinkage compensation;
+  supports-on parts, other steps and a disabled config change nothing; errors come
+  back as `RecoverableError`, never an exception mid-slice.
+* `plugins/shared/ENGINE-SENSITIVITY.md` — an upstream engine finding (tine placement moves under
+  1e-13 mm of noise) and how the plugin neutralises it.
 
-### Проверка в реальной сборке Orca (ночная 2.5.0-dev, Windows, 2026-09-23)
+### Checked in a real Orca build (2.5.0-dev nightly, Windows, 2026-09-23)
 
-Деталь: `lbracket` с наклоном 35°, профиль Elegoo Centauri Carbon 2, слои 0.2 мм.
-G-code плагина сравнивался с обычной нарезкой STL с рёбрами, экспортированного с сайта.
+Part: `lbracket` tilted 35°, Elegoo Centauri Carbon 2 profile, 0.2 mm layers.
+Compared the plugin's G-code with the website's finned STL sliced the normal way.
 
-* Журнал плагина: `4 fin(s), 16 tine(s) on 139 layer(s)` — то же, что при автономном
-  запуске движка.
-* `PrintObject.bounding_box()` — точная проекция XY с центром в начале координат.
-  Калибровка системы координат дала масштаб 1.0000000 от номинального.
-* Начиная со слоя 4, траектории стенок каждого слоя **идентичны** STL с рёбрами.
-  Суммарная экструзия отличается менее чем на **0.01 %**.
-* Слои 1–3 (опорная площадка) совпадают на 87–97 %. Причина — два эффекта Orca;
-  плагин теперь учитывает первый:
-  * Orca относит слой, чья плоскость среза касается верхней грани, *внутрь* тела.
-    Плагин теперь делает так же (раньше было наоборот, и один слой площадки терялся).
-  * Orca компенсирует «слоновью ногу» во время нарезки, до вызова обработчика.
-    Плагин теперь соответственно сужает рёбра первого слоя, сохраняя тонкие стенки.
-    Это приближение, поскольку собственный алгоритм Orca учитывает поток.
-* **Автоматическая кайма (Auto brim)** определяется по исходной детали, поэтому Orca
-  добавляет вокруг площадки кайму, которой не было бы у STL с рёбрами. Если она не нужна,
-  выберите «Без каймы (No brim)» в типе каймы.
-* Детали с **Включить поддержки (Enable support)** пропускаются. Сообщение журнала:
-  «пропущено (для этой детали включены поддержки Orca)».
+* Plugin log: `4 fin(s), 16 tine(s) on 139 layer(s)`, the same as the engine run
+  offline.
+* `PrintObject.bounding_box()` is the tight XY footprint, centred on the origin. The
+  frame calibration measured a scale of 1.0000000 of nominal.
+* From layer 4 up, every layer's wall toolpaths are **identical** to the finned STL.
+  Total extrusion is within **0.01 %**.
+* Layers 1–3 (the bed pad) overlap 87–97 %. Two Orca-side effects cause it, and
+  the plugin now handles the first:
+  * Orca puts a layer whose slice plane touches a top face *inside* the solid.
+    The plugin now does the same (it was the other way, which dropped one pad layer).
+  * Orca applies elephant-foot compensation during slicing, before the hook runs.
+    The plugin now shrinks first-layer fins to match, leaving thin walls intact.
+    It's approximate, since Orca's own routine is flow-aware.
+* **Auto brim** is decided from the plain part, so Orca adds a brim around the pad
+  that it wouldn't add for a finned STL. Set Brim type to *No brim* if you don't want it.
+* Parts with **Enable support** on are skipped. The log reads `skipped (Orca supports are on for this part)`.
 
 ---
 
-## Разделение чтения и записи, определяющее этот подход
+## The read/write split that shapes everything here
 
-OrcaSlicer и PrusaSlicer предоставляют **противоположные половины** нужных возможностей;
-ни один не предоставляет обе:
+OrcaSlicer and PrusaSlicer expose **opposite halves** of what this tool needs, and
+neither exposes both:
 
-| | читать загруженную сетку? | добавлять геометрию на стол? |
+| | read the loaded mesh? | add geometry to the plate? |
 |---|---|---|
-| **PrusaSlicer 3.0** (Lua) | ❌ нет доступа к треугольникам | ✅ генерация (`make_cube`…) — наш плагин Prusa создаёт ребро для ручного размещения |
-| **OrcaSlicer** (Python) | ✅ `orca.host` возвращает `vertices()`/`triangles()` | ❌ host доступен **только для чтения** — ничто здесь не изменяет модель |
+| **PrusaSlicer 3.0** (Lua) | ❌ no triangle access | ✅ generative (`make_cube`…) — our Prusa plugin drops a fin you hand-place |
+| **OrcaSlicer** (Python) | ✅ `orca.host` returns `vertices()`/`triangles()` | ❌ host is **read-only** — "nothing here mutates the model" |
 
-В Orca доступна *умная* половина, которой нет в Prusa: чтение настоящей модели пользователя
-и **автоматическая подгонка** рёбер к нависаниям. Но мы **не можем** разместить результат
-на текущем столе. Во всём API плагинов Orca нет добавления объекта, импорта сетки или
-создания примитива (проверены `orca.host`, `orca.script`, `orca.slicing`). Реалистичный
-предел этого пути: вычислить рёбра внутри Orca, записать `.3mf` с рёбрами, затем пользователь
-выполняет `File ▸ Import`. Это всё же автоматическая подгонка вместо ручного размещения
-в плагине Prusa, но не автоматическое появление рёбер на столе, как предполагалось в запросе.
+So on Orca we can do the *smart* half Prusa can't — read the user's actual model and
+**auto-fit** fins to its overhangs — but we **cannot** place the result on the live
+plate. There is no add-object / import-mesh / make-primitive call anywhere in Orca's
+plugin surface (verified across `orca.host`, `orca.script`, `orca.slicing`). The
+honest ceiling: compute the fins in-Orca, write a finned `.3mf`, user does
+`File ▸ Import`. That still beats the Prusa plugin (real auto-fit, not hand-placed),
+it just isn't the "fins land on your plate automatically" the feature request imagined.
 
-Теоретический путь записи — конвейер нарезки (`posSupportMaterial`, изменение текущего
-графа нарезки). Но он выдаёт поддержки как *траектории*, а не нашу контурную отламываемую
-сетку ребра. Это другой, более глубокий и менее точный путь. Он не входил в план.
+The one theoretical write-path is the slicing pipeline (`posSupportMaterial`, "mutate
+the live slicing graph") — but that emits support as *toolpaths*, not our contoured
+breakaway mesh fin. Different, deeper, lower-fidelity. Not the plan.
 
-## План развития
+## Roadmap
 
-1. **`support_fins_probe.py` — исследовательский прототип (этот коммит).** Читает модель
-   через `orca.host`, классифицирует нависания по 45° на **чистом numpy** (без trimesh),
-   сообщает грани, габариты и площадь нависаний каждого объёма и отдельно проверяет импорт
-   `trimesh`. До переноса отвечает на два вопроса: работает ли чтение реально загруженной
-   модели и на какие зависимости можно рассчитывать?
-2. **Перенести анализ и подгонку.** `spike_overhangs.py` → области и линии контакта, затем
-   `spike_orient.py` (переориентация для уменьшения нависаний) и `spike_fins.py` (контурные
-   отламываемые рёбра). Если на шаге 1 trimesh недоступен, реализовать его немногочисленные
-   вызовы (подсетка, выборка поверхности) на numpy.
-3. **Экспорт.** Использовать структуру `web/threemf.js` (деталь и рёбра — отдельные
-   размещённые объекты, единицы мм, производственные UUID) для записи `.3mf` с рёбрами.
-   Запись файлов разрешена с проверкой разрешений через обработчик аудита.
-4. **Вариант привлечения пользователей.** Лёгкая панель «отметить нависания → открыть
-   в printfins.com» только на API чтения сетки — знакомство с инструментом внутри слайсера
-   в рамках ограничений.
+1. **`support_fins_probe.py` — the spike (this commit).** Reads the loaded model via
+   `orca.host`, runs the 45° overhang classification in **pure numpy** (no trimesh),
+   reports faces/bbox/overhang-area per volume, and separately reports whether
+   `trimesh` imports. Answers the two unknowns before we port anything: *does the read
+   work on a real dragged-in model, and what deps can the port rely on?*
+2. **Port the analysis + fit.** `spike_overhangs.py` → region/contact-line, then
+   `spike_orient.py` (re-orient to minimise overhang) and `spike_fins.py` (contour the
+   breakaway fins). Reimplement trimesh's few calls (submesh, surface sample) in numpy
+   if step 1 says trimesh is absent.
+3. **Export.** Reuse `web/threemf.js`'s structure (part + fins as separate placed
+   objects, mm units, production UUIDs) to write a finned `.3mf` to disk. Filesystem
+   writes are permitted (permission-gated audit hook).
+4. **Funnel option.** A lightweight "flag my overhangs → open in printfins.com" panel
+   using only the read-only mesh API — legit in-slicer discovery within the rules.
 
-## Установка локального прототипа
+## Install (side-load)
 
-OrcaSlicer → диалог **Плагины (Plugins)** → **Обзор ▸ Установить локальный плагин
-(Browse ▸ Install local plugin)** → выберите `support_fins_probe.py`. Или поместите его
-в `<data_dir>/orca_plugins/`. Загрузите модель, затем запустите проверку через
-**Плагины ▸ Запустить (Plugins ▸ Run)**. Отчёт появится в диалоге результата и stdout.
+OrcaSlicer → **Plugins** dialog → **Browse ▸ Install local plugin** → pick
+`support_fins_probe.py`. Or drop it in `<data_dir>/orca_plugins/`. Load a model, then
+**Plugins ▸ Run** the probe; the report comes back in the result dialog (and stdout).
 
-**Состояние:** не проверен в работающей сборке OrcaSlicer; написан по документированному API.
-Сначала запустите проверку: если она загружается и сообщает разумные значения нависаний,
-можно переходить к этапу 2.
+**Status:** untested against a live OrcaSlicer build — written to the documented API.
+Run the probe first; if it loads and reports sane overhang numbers, phase 2 is greenlit.

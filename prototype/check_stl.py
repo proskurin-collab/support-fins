@@ -35,18 +35,18 @@ FLANK_MIN = 0.20
 OVERHANG_COS = np.cos(np.radians(45)) + 1e-4
 BED_EPS = 0.35
 # One dial, one owner: the generator's PROP.maxUnsupportedSpan is the value,
-# read out of prop.js so the checker cannot drift from it. The literal here is
+# read out of web/prop/config.js (PROP) so the checker cannot drift from it. The literal here is
 # only the fallback if the parse ever fails (and it warns when that happens).
 def _span_from_generator():
     import re, pathlib
-    prop_js = pathlib.Path(__file__).resolve().parent.parent / 'web' / 'prop.js'
+    prop_js = pathlib.Path(__file__).resolve().parent.parent / 'web' / 'prop' / 'config.js'
     try:
         m = re.search(r'maxUnsupportedSpan:\s*([0-9.]+)', prop_js.read_text())
         if m:
             return float(m.group(1))
     except OSError:
         pass
-    print('  ! не удалось прочитать maxUnsupportedSpan из web/prop.js; используется 12.0')
+    print('  ! could not read maxUnsupportedSpan from web/prop/config.js; using 12.0')
     return 12.0
 
 MAX_UNSUPPORTED_SPAN = _span_from_generator()   # mm; the dial M7b exposes
@@ -54,14 +54,14 @@ MAX_UNSUPPORTED_SPAN = _span_from_generator()   # mm; the dial M7b exposes
 
 def _baseh_from_generator():
     import re, pathlib
-    prop_js = pathlib.Path(__file__).resolve().parent.parent / 'web' / 'prop.js'
+    prop_js = pathlib.Path(__file__).resolve().parent.parent / 'web' / 'prop' / 'config.js'
     try:
         m = re.search(r'baseH:\s*([0-9.]+)', prop_js.read_text())
         if m:
             return float(m.group(1))
     except OSError:
         pass
-    print('  ! не удалось прочитать baseH из web/prop.js; используется 1.0')
+    print('  ! could not read baseH from web/prop/config.js; using 1.0')
     return 1.0
 
 
@@ -139,8 +139,8 @@ def part_of(case):
         return trimesh.load(f'{case}-part.stl', force='mesh')
     except Exception:
         full = trimesh.load(f'{case}.stl', force='mesh')
-        print(f'  ! {case.split("/")[-1]}: нет -part.stl, используется '
-              f'самое большое тело (некорректно для деталей из нескольких тел)')
+        print(f'  ! {case.split("/")[-1]}: no -part.stl, falling back to the '
+              f'largest body (wrong for multi-body parts)')
         return sorted(full.split(only_watertight=False),
                       key=lambda b: -len(b.faces))[0]
 
@@ -156,8 +156,8 @@ def check(case):
         # An empty result is a coverage failure; it is only not a CORRECTNESS
         # failure, so it gets its own bucket rather than being folded into either.
         cov, tot = coverage(case, [])
-        print(f'{case.split("/")[-1]:28} ПУСТО -- ничего не построено'
-              f'{"":42}  покрытие   0%  от {tot:6.0f} мм2')
+        print(f'{case.split("/")[-1]:28} EMPTY -- nothing built'
+              f'{"":42}  cov   0%  of {tot:6.0f} mm2')
         return None, (0.0 if cov is not None else None), tot
 
     part = part_of(case)
@@ -181,14 +181,14 @@ def check(case):
 
     bad = [b for b in added if not (b.is_watertight and b.is_volume)]
     if bad:
-        problems.append(f'{len(bad)} тел незамкнуты/не имеют объёма')
+        problems.append(f'{len(bad)} solids not watertight/volume')
 
     # walls and bases must stay out of the part
     inside = 0
     for b in walls:
         inside += int((pq.signed_distance(b.vertices) > 1e-3).sum())
     if inside:
-        problems.append(f'{inside} вершин стенки/основания внутри детали')
+        problems.append(f'{inside} wall/base verts inside part')
 
     # every tine must bite the part AND be joined to a wall
     no_bite = no_grip = 0
@@ -199,9 +199,9 @@ def check(case):
         if wall_q and min(abs(q.signed_distance(t.vertices)).min() for q in wall_q) > 0.5:
             no_grip += 1
     if no_bite:
-        problems.append(f'{no_bite} перемычек ни с чем не соединяются')
+        problems.append(f'{no_bite} tines fuse nothing')
     if no_grip:
-        problems.append(f'{no_grip} перемычек отделены от стенки')
+        problems.append(f'{no_grip} tines detached from wall')
 
     # The standoff is the wall's CLOSEST approach to the part, sampled over its
     # surface. Not the median: a wall whose face is only partly covered by its
@@ -222,18 +222,18 @@ def check(case):
         d = pq.signed_distance(pts)
         if len(d):
             gaps.append(float(np.abs(d).min()))
-    gap_txt = ', '.join(f'{g:.3f}' for g in gaps) if gaps else 'н/д'
+    gap_txt = ', '.join(f'{g:.3f}' for g in gaps) if gaps else 'n/a'
     if gaps and any(abs(g - STANDOFF) > 0.05 for g in gaps):
-        problems.append(f'зазор не соответствует спецификации ({gap_txt})')
+        problems.append(f'standoff off spec ({gap_txt})')
     if flanks and min(flanks) < FLANK_MIN:
-        problems.append(f'полка {min(flanks):.3f} < {FLANK_MIN} (сплавится)')
+        problems.append(f'flange {min(flanks):.3f} < {FLANK_MIN} (would weld)')
 
     ok = not problems
     cov, tot = coverage(case, added)
-    print(f'{case.split("/")[-1]:28} {len(added):4} тел  {len(walls)-len(gaps)}+{len(gaps)} стенок/оснований'
-          f'  {len(tines):4} перемычек  зазор {gap_txt:14}'
-          f'  покрытие {0 if cov is None else cov:3.0f}%  от {tot:6.0f} мм2'
-          f'  {"OK" if ok else "ОШИБКА: " + "; ".join(problems)}')
+    print(f'{case.split("/")[-1]:28} {len(added):4} solids  {len(walls)-len(gaps)}+{len(gaps)} wall/base'
+          f'  {len(tines):4} tines  standoff {gap_txt:14}'
+          f'  cov {0 if cov is None else cov:3.0f}%  of {tot:6.0f} mm2'
+          f'  {"OK" if ok else "FAIL: " + "; ".join(problems)}')
     return ok, cov, tot
 
 
@@ -258,7 +258,7 @@ def check_props(case, added, part, pq):
     problems = []
     bad = [b for b in added if not (b.is_watertight and b.is_volume)]
     if bad:
-        problems.append(f'{len(bad)} тел незамкнуты/не имеют объёма')
+        problems.append(f'{len(bad)} solids not watertight/volume')
 
     inside = 0
     nwall = 0
@@ -282,20 +282,20 @@ def check_props(case, added, part, pq):
         if (~above).any():
             flanks.append(float(dist[~above].min()))
     if inside:
-        problems.append(f'{inside} вершин поддержки внутри детали (не должны сплавляться)')
+        problems.append(f'{inside} prop verts inside part (must not fuse)')
 
-    gap_txt = ', '.join(f'{g:.3f}' for g in tops) if tops else 'н/д'
+    gap_txt = ', '.join(f'{g:.3f}' for g in tops) if tops else 'n/a'
     if tops and any(abs(g - STANDOFF) > 0.06 for g in tops):
-        problems.append(f'зазор для отламывания не соответствует спецификации ({gap_txt})')
+        problems.append(f'breakaway gap off spec ({gap_txt})')
     if flanks and min(flanks) < FLANK_MIN:
-        problems.append(f'боковой зазор {min(flanks):.3f} < {FLANK_MIN} (сплавится)')
+        problems.append(f'flank {min(flanks):.3f} < {FLANK_MIN} (would weld)')
 
     ok = not problems
     cov, tot = coverage(case, added)
-    print(f'{case.split("/")[-1]:28} {len(added):4} тел  {nwall} поддержек'
-          f'  {"":16} зазор {gap_txt:14}'
-          f'  покрытие {0 if cov is None else cov:3.0f}%  от {tot:6.0f} мм2'
-          f'  {"OK" if ok else "ОШИБКА: " + "; ".join(problems)}')
+    print(f'{case.split("/")[-1]:28} {len(added):4} solids  {nwall} props'
+          f'  {"":16} gap {gap_txt:14}'
+          f'  cov {0 if cov is None else cov:3.0f}%  of {tot:6.0f} mm2'
+          f'  {"OK" if ok else "FAIL: " + "; ".join(problems)}')
     return ok, cov, tot
 
 
@@ -312,10 +312,10 @@ def main(paths):
     # a handful of small ones that happen to be easy.
     tot = sum(r[2] for r in results)
     got = sum((r[1] or 0.0) / 100.0 * r[2] for r in results)
-    print(f'\n{clean}/{len(results)} случаев дали корректную поддержку'
-          f'  ({len(built) - clean} построено с ошибками, {empty} без результата)')
-    print(f'покрытие нависаний: {100 * got / tot if tot else 0:.0f}% от {tot:.0f} мм2'
-          f'  (не дальше {MAX_UNSUPPORTED_SPAN:.0f} мм от поддержки)')
+    print(f'\n{clean}/{len(results)} cases produced a clean support'
+          f'  ({len(built) - clean} built but failed, {empty} built nothing)')
+    print(f'overhang coverage: {100 * got / tot if tot else 0:.0f}% of {tot:.0f} mm2'
+          f'  (within {MAX_UNSUPPORTED_SPAN:.0f} mm of a support)')
     return 0 if clean == len(results) else 1
 
 

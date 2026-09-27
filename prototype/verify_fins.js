@@ -13,7 +13,7 @@ const { findWallPatches } = await import(`${WEB}/planes.js`);
 function readBinarySTL(bytes) {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const n = dv.getUint32(80, true);
-  if (84 + n * 50 !== bytes.byteLength) throw new Error('это не двоичный STL');
+  if (84 + n * 50 !== bytes.byteLength) throw new Error('not a binary STL');
   const pos = new Float32Array(n * 9);
   for (let f = 0; f < n; f++) {
     const o = 84 + f * 50 + 12;
@@ -62,33 +62,33 @@ const rot = rotX(tilt);
 const res = analyze(topo, 45, rot);
 const patches = findWallPatches(topo, rot, res.offset);
 
-console.log(`${path.split('/').pop()}  наклон ${tilt}°  режим ${mode}`);
-console.log(`  граней ${topo.nFaces}  областей нависаний ${res.regions.length}` +
-            `  контакт со столом ${res.bedArea.toFixed(1)} мм2`);
-console.log(`  участков для стенок ${patches.length}`);
+console.log(`${path.split('/').pop()}  tilt ${tilt}deg  mode ${mode}`);
+console.log(`  faces ${topo.nFaces}  overhang regions ${res.regions.length}` +
+            `  bed contact ${res.bedArea.toFixed(1)} mm2`);
+console.log(`  wall patches ${patches.length}`);
 for (const p of patches.slice(0, 6)) {
-  console.log(`    площадь ${p.area.toFixed(0).padStart(6)} мм2  ` +
+  console.log(`    area ${p.area.toFixed(0).padStart(6)} mm2  ` +
               `z ${p.z0.toFixed(1)}..${p.z1.toFixed(1)}  ` +
-              `длина ${(p.u1 - p.u0).toFixed(1)}  плоскостность ${p.flatness.toFixed(3)}`);
+              `len ${(p.u1 - p.u0).toFixed(1)}  flat ${p.flatness.toFixed(3)}`);
 }
 
 const t0 = performance.now();
 const built = buildFins(topo, res, rot, { mode, bedPad: true });
 const ms = performance.now() - t0;
 
-console.log(`  -> всего ${built.fins.length}: ${mode === 'prop' ? 'подпорки' : 'рёбра'}, ` +
-            `перемычек ${built.tines}, площадка ${built.pad ? 'да' : 'нет'}  (${ms.toFixed(0)} мс)`);
+console.log(`  -> ${built.fins.length} ${mode === 'prop' ? 'props' : 'fins'}, ` +
+            `${built.tines} tines, pad ${built.pad ? 'yes' : 'no'}  (${ms.toFixed(0)} ms)`);
 if (mode === 'prop') {
   for (const q of built.props ?? []) {
-    console.log(`     высота ${q.height.toFixed(1)} мм x пролёт ${q.span.toFixed(1)} мм` +
-                `  под нависанием ${q.area.toFixed(0)} мм2`);
+    console.log(`     ${q.height.toFixed(1)}mm tall x ${q.span.toFixed(1)}mm span` +
+                `  over ${q.area.toFixed(0)} mm2 of overhang`);
   }
   // built.skipped, NOT built.rejected: the latter is the stabilize-shaped object
   // and keeps only `blocked`, so this line used to print "blocked: 0" for a part
   // whose props were all discarded as buried.
-  console.log(`     пропущено: ${JSON.stringify(built.skipped)}`);
+  console.log(`     skipped: ${JSON.stringify(built.skipped)}`);
   if (built.volume) {
-    console.log(`     пластик: ${(built.volume / 1000).toFixed(2)} см3 стенок`);
+    console.log(`     plastic: ${(built.volume / 1000).toFixed(2)} cm3 of walls`);
   }
 }
 // In 'auto' the list mixes props (site null, no tines) with braces (a real site),
@@ -96,18 +96,18 @@ if (mode === 'prop') {
 for (const f of mode === 'prop' ? [] : built.fins) {
   const site = f.site
     ? `  d ${f.site.d.toFixed(2)} u ${f.site.u0.toFixed(1)}..${f.site.u1.toFixed(1)}` +
-      ` из ${f.site.patchU[0].toFixed(1)}..${f.site.patchU[1].toFixed(1)}`
-    : '  (отламываемая стенка)';
-  console.log(`     высота ${f.height.toFixed(1)} мм x ${f.length.toFixed(1)} мм  ` +
-              `перемычек ${f.tines} / рядов ${f.rows}  направление ${f.bearing}°  ` +
-              `свободная высота ${f.stilt.toFixed(1)}  наклон ${f.lean.toFixed(0)}` + site);
+      ` of ${f.site.patchU[0].toFixed(1)}..${f.site.patchU[1].toFixed(1)}`
+    : '  (breakaway wall)';
+  console.log(`     ${f.height.toFixed(1)}mm tall x ${f.length.toFixed(1)}mm  ` +
+              `${f.tines} tines / ${f.rows} rows  bearing ${f.bearing}deg  ` +
+              `stilt ${f.stilt.toFixed(1)}  lean ${f.lean.toFixed(0)}` + site);
 }
-console.log(`  областей нависаний без поддержки: ${built.unserved}`);
+console.log(`  unserved overhang regions: ${built.unserved}`);
 const seat_ = built.seating;
-console.log(`  тип опоры:${seat_.kind === 'edge' ? '' : ''} ${seat_.kind}` +
-            `  (пятно контакта ${seat_.span.toFixed(1)} мм, ${seat_.bedArea.toFixed(1)} мм2)` +
+console.log(`  seating: on ${seat_.kind === 'edge' ? 'an' : 'a'} ${seat_.kind}` +
+            `  (footprint ${seat_.span.toFixed(1)}mm, ${seat_.bedArea.toFixed(1)} mm2)` +
             (seat_.kind === 'point'
-              ? '  <-- опора на точку; никакая поддержка это не удержит' : ''));
+              ? '  <-- balanced on a point; no support can hold this' : ''));
 
 // part, as oriented and seated, plus everything the tool added
 const { x: dx, y: dy, z: dz } = res.offset;
@@ -129,8 +129,8 @@ for (const t of built.padTriangles) tris.push(t);
 
 const out = Deno.args[2] ?? '/tmp/sf-check.stl';
 Deno.writeFileSync(out, writeBinarySTL(tris));
-console.log(`  записано ${out}  (треугольников детали ${partTris / 3} + ` +
-            `добавлено ${(tris.length - partTris) / 3})`);
+console.log(`  wrote ${out}  (${partTris / 3} part tris + ` +
+            `${(tris.length - partTris) / 3} added)`);
 
 // The part ALONE, so the checker never has to guess which solid it is. It used
 // to take the largest body of the combined file, which silently picks ONE body

@@ -4,7 +4,7 @@
  */
 import { el } from './dom.js';
 import { buildPlate } from './scene.js';
-import { part, shade } from '../app.js';
+import { part, shade } from './part.js';
 
 /**
  * Build volumes are listed by DIMENSION, never by printer name. This ships to
@@ -29,7 +29,7 @@ const customRow = el('custom-vol');
 const customInputs = ['vx', 'vy', 'vz'].map(el);
 
 for (const v of VOLUMES) volumeSelect.add(new Option(volLabel(v), volLabel(v)));
-volumeSelect.add(new Option('Свои настройки…', 'custom'));
+volumeSelect.add(new Option('Custom…', 'custom'));
 
 let volume = { ...DEFAULT_VOLUME };
 try {

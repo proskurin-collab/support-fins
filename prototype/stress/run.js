@@ -80,7 +80,7 @@ for (const file of files) {
       res = analyze(topo, 45, rot);
       built = buildFins(topo, res, rot, { mode: 'auto', bedPad: true, tines: true });
     } catch (e) { err = String(e).split('\n')[0]; }
-    if (err) { rows.push({ name, oname, flag: 'FAIL', note: 'сбой: ' + err }); continue; }
+    if (err) { rows.push({ name, oname, flag: 'FAIL', note: 'crash: ' + err }); continue; }
 
     const fins = built.braceCount ?? 0, props = built.propCount ?? 0;
     const total = fins + props;
@@ -91,14 +91,14 @@ for (const file of files) {
     const seat = built.seating?.kind ?? '?';
 
     let flag = 'OK', note = '';
-    if (!closed) { flag = 'FAIL'; note = 'добавленная геометрия не замкнута'; }
+    if (!closed) { flag = 'FAIL'; note = 'added geometry not closed'; }
     else if (overh > 0 && total === 0 && seat !== 'point' && !built.pad) {
-      flag = 'FAIL'; note = `областей нависаний: ${overh}, но поддержек 0`;
-    } else if (total > 10) { flag = 'WARN'; note = `избыток: поддержек ${total}`; }
-    else if (maxStilt > 18) { flag = 'WARN'; note = `тонкая стойка: свободная высота ${maxStilt.toFixed(0)} мм`; }
-    else if (seat === 'point' && !built.pad) { flag = 'WARN'; note = 'опора на точку, без площадки'; }
-    else if (grams > 40) { flag = 'WARN'; note = `тяжело: ${grams.toFixed(0)} г`; }
-    else if (overh === 0 && total === 0) { note = 'нет нависаний'; }
+      flag = 'FAIL'; note = `${overh} overhang region(s) but 0 support`;
+    } else if (total > 10) { flag = 'WARN'; note = `spray: ${total} supports`; }
+    else if (maxStilt > 18) { flag = 'WARN'; note = `spindly: stilt ${maxStilt.toFixed(0)}mm`; }
+    else if (seat === 'point' && !built.pad) { flag = 'WARN'; note = 'point-seated, no pad'; }
+    else if (grams > 40) { flag = 'WARN'; note = `heavy: ${grams.toFixed(0)}g`; }
+    else if (overh === 0 && total === 0) { note = 'no overhangs'; }
 
     rows.push({ name, oname, flag, fins, props, tines: built.tines, overh,
                 seat, stilt: maxStilt, grams, note });
@@ -107,8 +107,8 @@ for (const file of files) {
 
 // report
 const w = (s, n) => String(s).padEnd(n);
-console.log(w('форма', 12) + w('поза', 8) + w('статус', 6) + w('рёбра', 5) + w('подп.', 6) +
-            w('перем.', 6) + w('нав.', 4) + w('опора', 7) + w('стойка', 7) + w('г', 6) + 'заметка');
+console.log(w('shape', 12) + w('pose', 8) + w('flag', 6) + w('fins', 5) + w('props', 6) +
+            w('tines', 6) + w('ovh', 4) + w('seat', 7) + w('stilt', 7) + w('g', 6) + 'note');
 for (const r of rows) {
   if (!verbose && r.flag === 'OK') continue;
   console.log(w(r.name, 12) + w(r.oname, 8) + w(r.flag, 6) + w(r.fins ?? '-', 5) +
@@ -117,5 +117,5 @@ for (const r of rows) {
 }
 const by = (f) => rows.filter((r) => r.flag === f).length;
 const finCases = rows.filter((r) => (r.fins ?? 0) > 0).length;
-console.log(`\nСлучаев: ${rows.length}; ${by('OK')} OK, ${by('WARN')} WARN, ${by('FAIL')} FAIL` +
-            `  |  случаев с >=1 комбинированным ребром с перемычками: ${finCases}`);
+console.log(`\n${rows.length} cases: ${by('OK')} OK, ${by('WARN')} WARN, ${by('FAIL')} FAIL` +
+            `  |  ${finCases} cases placed >=1 tined combined fin`);

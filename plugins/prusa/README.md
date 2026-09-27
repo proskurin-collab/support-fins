@@ -1,101 +1,94 @@
-# Support Fins — плагин PrusaSlicer 3.0
+# Support Fins — PrusaSlicer 3.0 plugin
 
-Нативный плагин PrusaSlicer, дополняющий [printfins.com](https://printfins.com), для
-**API плагинов 3.0** (`project.plugin` 1.0.0). Пакет `com.printfins.support-fins/` — один
-каталог без вложенных папок, с единственным пунктом меню:
+A native PrusaSlicer plugin companion to [printfins.com](https://printfins.com), targeting
+the **3.0 plugin API** (`project.plugin` 1.0.0). Bundle `com.printfins.support-fins/` is one
+flat directory with a single menu entry:
 
-- **Support Fins → Добавить ребро поддержки** (`add_fin.lua`) — помещает на стол одно
-  отламываемое ребро: тонкую стенку с широким основанием, сужением наверху и **гребёнкой
-  горизонтальных соединительных перемычек на контактной стороне** (чаще у основания,
-  по спецификации Slant3D). Такое же ребро добавляет сайт. Расположите его вручную
-  **инструментом перемещения PrusaSlicer**: поверните **сторону с перемычками** (+X)
-  к нависающей грани детали, поставьте основание на стол и подвиньте до лёгкого касания
-  перемычек. После печати отогните ребро — горизонтальные перемычки сплавляются в пределах
-  одного слоя и аккуратно ломаются. Параметры: высота, длина, толщина стенки, ширина
-  основания и переключатель **Соединительные перемычки** (выкл. — обычная отламываемая
-  стенка для плоского нависания).
+- **Support Fins → Add a Fin** (`add_fin.lua`) — drops one breakaway support fin onto the
+  plate: a thin blade on a flared foot, necking to a thin tip, with a **comb of horizontal
+  tines up the gripping face** (denser near the base, per Slant3D's spec) — the same fin the
+  website bakes in. You position it by hand with **PrusaSlicer's own move tool**: turn it so
+  the **tine face** (the combed +X side) sits against your part's overhanging face, foot on
+  the plate, and nudge it until the tines just touch. Then bend the fin off — the horizontal
+  tines fuse in one layer line and snap clean. Params: fin height, length, wall, foot, and a
+  **Gripping Tines** toggle (off = a plain breakaway wall for a flat overhang).
 
-## Почему размещение ручное — прочитайте перед съёмкой
+## Why placement is by hand — read before filming
 
-Основной продукт — сайт: загрузите любой STL → поверните в более прочную ориентацию →
-инструмент найдёт нависания и подгонит отламываемые рёбра под нижнюю поверхность →
-экспортируйте STL для печати без поддержек в **любом** слайсере. Всё это требует
-**анализа сетки**, то есть чтения треугольников модели.
+The website is the real product: load any STL → rotate it into a stronger orientation → it
+finds the overhangs and contours breakaway fins to the part's underside → export an STL that
+prints support-free in **any** slicer. All of that is **mesh analysis**: it reads the model's
+triangles.
 
-**Песочница плагинов 3.0 не может читать сетку.** В примечаниях API сказано:
-*«Геометрию сетки нельзя прочитать обратно: `Mesh` предоставляет `bounds()` и `translate()`,
-но не треугольники»*. В `ProjectApi.cpp` также нет метода получения геометрии загруженного
-объекта. API **генеративный**: строит параметрические объекты из
-`make_cube`/`make_cylinder`/… Поэтому плагин не может автоматически находить нависания,
-подгонять рёбра или привязываться к поверхности. Он может только *создать* ребро, а
-пользователь — разместить его. Автоматическая подгонка остаётся на сайте. Честная формулировка
-для видео: *«Prusa выпустила плагины, пока шла разработка, и я перенёс ребро в слайсер.
-Плагин не видит модель и не подгоняет ребро автоматически, как сайт, но добавляет настоящее
-ребро, которое вы ставите под нависанием»*.
+**The 3.0 plugin sandbox cannot read a mesh.** Verbatim from the API notes: *"a mesh's
+geometry cannot be read back — `Mesh` exposes `bounds()` and `translate()`, not triangles,"*
+and there is no getter for the user's loaded object's geometry anywhere in `ProjectApi.cpp`.
+The API is **generative** (build parametric objects from `make_cube`/`make_cylinder`/…). So a
+plugin can't auto-detect an overhang, contour a fin to it, or snap onto a surface — it can
+only *generate* the fin and let you place it. Auto-fitting stays on the web. The honest
+on-camera line: *"Prusa shipped plugins mid-build, so I brought the fin into the slicer — it
+can't see your model, so it can't auto-fit like the site, but it drops the real fin in and you
+set it under your overhang."*
 
-## Установка
+## Install
 
-**Для разработки (без подписи) — быстрый цикл:** скопируйте каталог пакета в каталог данных PrusaSlicer:
+**Dev (no signing) — the fast loop:** copy the bundle directory into PrusaSlicer's data dir:
 
 ```
 cp -R .../plugins/prusa/com.printfins.support-fins "<data dir>/lua/"
 ```
 
-`<data dir>` — папка с `PrusaSlicer.ini`. В альфа-версиях 3.0 её имя **отличается** от
-обычного: сборка 3.0.0-alpha11 для Windows использовала `%APPDATA%\PrusaSlicer3-dev\`;
-на macOS ищите в `~/Library/Application Support/`. Не угадывайте: найдите папку с
-`PrusaSlicer.ini` или запустите с `--datadir`. При необходимости создайте подпапку `lua/`
-и перезапустите слайсер; появится **Support Fins → Добавить ребро поддержки**.
+`<data dir>` is the folder holding `PrusaSlicer.ini`. On the 3.0 alphas it is **not** the
+plain name — a 3.0.0-alpha11 Windows build used `%APPDATA%\PrusaSlicer3-dev\`; on macOS look
+under `~/Library/Application Support/`. Don't guess; find the folder with `PrusaSlicer.ini`,
+or launch with `--datadir`. Create the `lua/` subfolder if needed, then restart the slicer;
+the entry appears under **Support Fins → Add a Fin**.
 
-**Релиз (импорт подписанного ZIP):** удобная установка требует подписи:
+**Release (signed ZIP import):** the convenient install path requires a signature:
 
 ```
 PrusaSlicer plugin keygen -P author.private.pem -p author.public.pem
 PrusaSlicer plugin sign   -P author.private.pem com.printfins.support-fins
 ```
 
-Файлы пакета должны лежать **в корне ZIP** (`manifest.json` на верхнем уровне, а не внутри
-папки `com.printfins.support-fins/`). Для импорта нужен
-`authorized_authors/matthewtrahan.pem` (поле `author` задаёт имя файла ключа).
+The ZIP must hold the bundle's files **at its root** (`manifest.json` at the top level, not
+inside a `com.printfins.support-fins/` folder), and importers need
+`authorized_authors/matthewtrahan.pem` (the `author` field names the key file).
 
-## Проверка (в запущенном слайсере 3.0 — модульный тест этого не проверит)
+## Verify (must be done in a running 3.0 slicer — it can't be unit-tested)
 
-1. Появляется **Support Fins → Добавить ребро поддержки**; в диалоге четыре числовых поля
-   и переключатель перемычек.
-2. Создайте ребро с параметрами по умолчанию: тонкая стенка на T-образном основании,
-   сужение наверху, гребёнка примерно из 7 перемычек в нижней части одной стороны.
-   (Предварительный вид ожидаемой формы: `~/Downloads/support-fin-plugin-preview.png`.)
-3. Переместите ребро стороной с перемычками к нависающей грани детали, основанием на стол;
-   подвиньте до лёгкого касания перемычек.
-4. **Ребро должно быть ОДНИМ связным телом, а не россыпью блоков.** Все части строятся в
-   единой системе координат через `shapes.builder()` (включён из leotrax3d, MIT), как в
-   поставляемых `box_generator`/`tolerance_test`. Каждый объём привязывается к первому;
-   предположений о начале координат примитива нет. Работающие плагины подтверждают, что
-   `make_cube` начинается в углу (основание при z = 0). Ранняя ручная реализация центрировала
-   присоединяемые части на y = 0, а стенка занимала `y[0,length]`, из-за чего основание,
-   кромка и перемычки смещались примерно на половину длины. Построитель и новые проверки
-   пересечений в тесте предотвращают эту ошибку.
-5. Нарежьте, напечатайте, отогните ребро — перемычки должны аккуратно ломаться, оставляя
-   слабые следы.
+1. **Support Fins → Add a Fin** appears; the dialog shows four floats + the Tines toggle.
+2. Generate with defaults → a thin blade on a T-foot, a necked tip, and a comb of ~7 tine ribs
+   up the lower part of one face. (Preview of the intended shape:
+   `~/Downloads/support-fin-plugin-preview.png`.)
+3. Move it so the tine face meets a part's overhanging face, foot on the plate; nudge until the
+   tines just kiss the face.
+4. **It must be ONE connected fin, not scattered boxes.** All pieces are built in one flat
+   object space via `shapes.builder()` (vendored from leotrax3d, MIT) — the same pattern the
+   shipped `box_generator`/`tolerance_test` use, which anchors every volume to the first and
+   never assumes a primitive's origin. Corner-origin `make_cube` (base at z = 0) is confirmed by
+   those working plugins. The earlier hand-rolled version centred the attachments at y = 0 while
+   the wall spanned `y[0,length]`, flinging the foot/tip/tines ~half the length off the blade —
+   that bug is what the builder + the new overlap assertions in the test now rule out.
+5. Slice, print, bend the fin off — tines should snap clean and leave faint marks.
 
-**Линтер и локальные проверки:** запустите `./run-tests.sh` из `plugins/prusa/`
-(нужны `lua`/`luac`). Проверяются синтаксис (`luac -p`), JSON манифеста, **проход сканирования**
-слайсера на пустом движке и **арифметика** ребра с имитацией API (`tests/add_fin_test.lua`).
-Имитация соответствует *реальной* семантике: начало куба в углу, `other_volumes` перемещает
-**относительно основной сетки**. Проверяется, что каждая часть **пересекает стенку** —
-это выявляет разлетающиеся блоки. Сканирование защищает от критичной тихой ошибки:
-вызова `require`/`api` **на уровне файла**. Сканер выполняет весь файл ради чтения `info`
-в движке без этих функций; такой вызов убирает пункт меню без сообщения об ошибке.
-В обоих файлах `api`/`require` используются только внутри функций (`execute()` плагина,
-методы модуля); сохраняйте это правило.
+**Lint / local checks:** run `./run-tests.sh` from the `plugins/prusa/` dir (needs `lua`/`luac`). It
+covers syntax (`luac -p`), the manifest JSON, the slicer's **scan pass** on a bare engine, and
+the fin **arithmetic** against a mock api (`tests/add_fin_test.lua`) — whose mock now models the
+*real* semantics (corner-origin cubes; `other_volumes` translates **relative to the main mesh**)
+and asserts every piece actually **overlaps the wall**, the check that catches the scatter. The
+fatal, silent trap the scan guards is any `require`/`api` call **at file scope** — the scan runs
+the whole file just to read `info`, on an engine with neither, so a hit there produces no menu
+entry and no error. Both files keep all `api`/`require` use inside functions (`execute()` for the
+plugin, method bodies for the module); keep it that way.
 
-## Заметки и возможные доработки
+## Notes / possible polish
 
-- **Основание с фаской.** Сейчас основание — плоская полка; скос к стенке приблизил бы
-  его к профилю `breakaway.py`. Пока отложено: нужны повёрнутые вырезы `Negative`, результат
-  которых нельзя проверить без интерфейса. Добавляйте с визуальной проверкой в слайсере.
-- **Распространение:** можно отправить PR в
+- **Chamfered foot.** The foot is currently a flat flange; a bevel up to the wall would read
+  even more like the `breakaway.py` profile. Skipped for now — it needs rotated `Negative` cuts
+  whose result can't be verified headlessly; add it with an in-slicer look.
+- **Distribution:** optionally PR to
   [leotrax3d/prusaslicer-plugins-unofficial](https://github.com/leotrax3d/prusaslicer-plugins-unofficial)
-  ради аудитории, CI и процесса подписи/релизов, сохранив основную копию здесь.
-- Прежние самостоятельные пункты **Overhang Test** и **Combined Support Demo** удалены
-  (сохранены в истории Git). Продукт — единственная команда добавления ребра.
+  for reach + its CI and signing/release workflow, keeping the canonical copy here.
+- The earlier self-contained **Overhang Test** and **Combined Support Demo** entries were
+  removed (git history keeps them) — the single Add-a-Fin is the product.
