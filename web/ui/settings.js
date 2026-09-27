@@ -55,7 +55,7 @@ el('fin-mode').addEventListener('change', (e) => {
   setGizmo();
   refreshFins();
 });
-// Bed pad style (PAD.style in fins.js). Only Custom shows the pad's numbers; the
+// Bed pad style (PAD.style in fins/pad.js). Only Custom shows the pad's numbers; the
 // presets keep theirs fixed (Sure hold's follow the material profile). Switching
 // to Custom starts it from whichever preset was showing, so a tweak begins from
 // numbers that are known to print rather than from blanks.
@@ -159,23 +159,21 @@ el('cutout').addEventListener('change', () => {
 });
 
 // Material profiles. PETG welds to a support far harder than the PLA every bite
-// number here was tuned on, so PETG needs more clearance in all four places at
-// once: the fin's tine standoff (FIN.gap) and how far each tine sinks into the
-// part (FIN.tineBite), the plain breakaway prop's clearance (PROP.gap), and the
-// bed pad -- thinner (FIN.padH) with a gap instead of a tack (PAD.grab < 0). PLA
-// is exactly today's numbers, so switching to PLA (or never touching this) leaves
-// existing prints unchanged. These objects are read fresh on every build, so
-// applying a profile + rebuilding is all it takes. density is g/cm^3 for the
-// grams receipt.
+// number here was tuned on, so PETG needs more clearance in all three places at
+// once: how far each tine sinks into the part (FIN.tineBite), the plain breakaway
+// prop's clearance (PROP.gap), and the bed pad -- thinner (FIN.padH) with a gap
+// instead of a tack (PAD.grab < 0). PLA is exactly today's numbers, so switching
+// to PLA (or never touching this) leaves existing prints unchanged. These objects
+// are read fresh on every build, so applying a profile + rebuilding is all it
+// takes. density is g/cm^3 for the grams receipt.
 const MATERIAL = {
-  pla:  { finGap: 0.2, tineBite: 0.30, padH: 0.5, padGrab:  0.05, propGap: 0.2,  density: 1.24 },
-  petg: { finGap: 0.3, tineBite: 0.15, padH: 0.3, padGrab: -0.10, propGap: 0.3,  density: 1.27 },
+  pla:  { tineBite: 0.30, padH: 0.5, padGrab:  0.05, propGap: 0.2,  density: 1.24 },
+  petg: { tineBite: 0.15, padH: 0.3, padGrab: -0.10, propGap: 0.3,  density: 1.27 },
 };
 export let materialDensity = MATERIAL.pla.density;
 
 function applyMaterial(name) {
   const m = MATERIAL[name] || MATERIAL.pla;
-  FIN.gap = m.finGap;
   FIN.tineBite = m.tineBite;
   FIN.padH = m.padH;
   PAD.grab = m.padGrab;

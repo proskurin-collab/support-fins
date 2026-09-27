@@ -12,10 +12,13 @@
 в Deno без графического интерфейса.
 
 - `web/fins.js` — входная функция `buildFins()`; автоматический режим рекурсивно вызывает
-  `mode:'prop'`, затем добавляет клинья (`buildPerpFins`) и опорную площадку (`buildPad`).
-- `web/prop.js` — `buildProps()` и этапы построения каждой стенки: `splitRegion`,
-  `patchTracks`, `sweep`, `settleTop`/`contourTop`/`lowerSag`, `stationIsClear`,
-  `stationCertified`, `emitTines`, `surfaceZAt` (уже ускорена пространственной сеткой).
+  `mode:'prop'`, затем добавляет клинья (`buildPerpFins`, `web/fins/wedges.js`) и опорную
+  площадку (`buildPad`, `web/fins/pad.js`).
+- `web/prop.js` — `buildProps()`, управляющая этапами построения каждой стенки в
+  `web/prop/`: `splitRegion`/`patchTracks` (`tracks.js`), `sweep` (`sweep.js`),
+  `settleTop`/`contourTop`/`lowerSag` (`contact.js`), `stationIsClear`/`stationCertified`
+  (`clearance.js`), `emitTines` (`tines.js`), `surfaceZAt` (`surface.js`, уже ускорена
+  пространственной сеткой).
 - `web/inside.js` — `insidePart`, `nearestPart` (обе ускорены сеткой 64² в плоскости YZ).
 
 Запуск без интерфейса: `deno run --allow-read <script.js>` (пример профилирования ниже).

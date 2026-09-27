@@ -174,7 +174,7 @@ const BED_EPS         = 0.35 * millimeter;        // a face this close to the pl
 const MIN_REGION_AREA = 12.0 * millimeter ^ 2;    // ignore slivers
 const ANGLE_EPS       = 1e-4;                     // a face exactly on the threshold is self-supporting
 
-// Overhang prop -- web/prop.js PROP
+// Overhang prop -- web/prop/config.js PROP
 const PROP_TH           = 1.0 * millimeter;       // stem thickness
 const PROP_TIP          = 0.6 * millimeter;       // contact tip thickness
 const PROP_TIP_H        = 1.5 * millimeter;       // height of the necked tip
@@ -200,7 +200,7 @@ const TINE_TOP_CLEAR    = 0.5 * millimeter;       // bare zone at a sloped wall'
 const TINE_SLOPE_MIN    = 1.0 * millimeter;       // rise before a wall counts as sloped
 const MIN_GRIP_TINES    = 3;                      // grip floor per wall
 
-// Stabilize fin -- web/fins.js FIN, web/planes.js
+// Stabilize fin -- the old web/fins.js FIN fields (since removed), web/planes.js
 const FIN_TH            = 1.2 * millimeter;       // wall thickness
 const FIN_BASE_H        = 1.0 * millimeter;       // base ellipse thickness
 const FIN_ROWS_LOW      = 8;                      // "7 or 8 low down"
@@ -225,7 +225,7 @@ const FIN_WIDE_AREA     = 1500 * millimeter ^ 2;
 const FIN_ROW_PITCH     = 55.0 * millimeter;
 const FIN_ROW_MAX       = 20;
 
-// Bed pad -- web/fins.js buildPad
+// Bed pad -- web/fins/pad.js buildPad
 const PAD_MARGIN        = 4.0 * millimeter;       // grip spread past the contact
 const PAD_MIN_AREA      = 60.0 * millimeter ^ 2;  // above this much bed contact no pad is needed
 const PAD_SEGS          = 48;
@@ -1378,7 +1378,7 @@ function propTineAt(context is Context, env is map, plan is map, c is ValueWithU
     return { "ok" : false };
 }
 
-// ─── Stabilize fins (web/fins.js buildFin, web/planes.js) ─────────────────────
+// ─── Stabilize fins (port of the old web/fins.js buildFin; web/planes.js) ─────
 
 /**
  * A fin stands BESIDE the part, parallel to a flat near-upright face and a gap
@@ -1856,7 +1856,7 @@ function buildFinAt(context is Context, fid is Id, env is map, s is map, win is 
     return { "ok" : true, "tines" : count };
 }
 
-// ─── Bed pad (web/fins.js buildPad) ───────────────────────────────────────────
+// ─── Bed pad (web/fins/pad.js buildPad) ───────────────────────────────────────
 
 /**
  * A part tilted onto an edge has near-zero bed contact and peels before any fin

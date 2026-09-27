@@ -1,5 +1,5 @@
 /**
- * Closed-solid emitters shared by the wall builders (prop.js) and the wall
+ * Closed-solid emitters shared by the wall builders (web/prop/) and the wall
  * cutouts (cutout.js). Pure mesh math: each takes cross-sections or a polygon
  * and pushes outward-wound triangles, as vertex triples, onto `out`.
  */
@@ -37,7 +37,7 @@ export function ribbon(secs, out) {
 /**
  * Extrude a CCW polygon (in the a,b plane of the right-handed frame a,b,c) from
  * c = lo to c = hi, emitting outward-wound triangles as vertex triples. The twin
- * of fins.js's `extrude`: the winding
+ * of the old fins.js `extrude` (since removed): the winding
  * only comes out consistently outward when (a,b,c) is right-handed, which every
  * caller below guarantees by construction.
  */
