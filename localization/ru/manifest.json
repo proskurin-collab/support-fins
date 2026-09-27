@@ -1,20 +1,85 @@
 {
   "version": 1,
   "documents": [
-    { "source": "README.md", "translation": "localization/ru/README.md", "sourceSha256": "a089f47c7c59a8ebbe0c7e20d396afa7d41ae2a98c73fc290e8dd56905840c9d" },
-    { "source": "docs/FIN-SPEC.md", "translation": "localization/ru/docs/FIN-SPEC.md", "sourceSha256": "4cecdebbf1f07f69396ba0f6a08562bb502a26efc952f01fc533ef47ad23f4eb" },
-    { "source": "docs/IMPLEMENTATION-PLAN.md", "translation": "localization/ru/docs/IMPLEMENTATION-PLAN.md", "sourceSha256": "759eda0e0b5f8db5f74a08e1d1c12aedf525bb35a5959d26fbac4566d465fd0c" },
-    { "source": "docs/PERFORMANCE-SPEC.md", "translation": "localization/ru/docs/PERFORMANCE-SPEC.md", "sourceSha256": "bc64a6e2ef1322d9b47f821d12daa862e52314a27559c25986f7f5b455e8562c" },
-    { "source": "docs/REVIEW-2026-07-24.md", "translation": "localization/ru/docs/REVIEW-2026-07-24.md", "sourceSha256": "5853f895af71b5188fce4bb0f07448bfbd4f6f249339a2daab1a804c7b2021d0" },
-    { "source": "docs/ROADMAP.md", "translation": "localization/ru/docs/ROADMAP.md", "sourceSha256": "2b486be45751f5c9395e3efc4bf5c7f648ea8225bb4397843d44e5e934b513a1" },
-    { "source": "plugins/onshape/README.md", "translation": "localization/ru/plugins/onshape/README.md", "sourceSha256": "895cc93b4001ef07bce5926e525b17f223dac0236bf0635d96e778604721c93f" },
-    { "source": "plugins/orca/README.md", "translation": "localization/ru/plugins/orca/README.md", "sourceSha256": "950954eafdff7e73f8a11fa1a5d5b7c439db329feaaa8cbbee56e1aa42598b64" },
-    { "source": "plugins/prusa/README.md", "translation": "localization/ru/plugins/prusa/README.md", "sourceSha256": "d926da3290415fd377247cb55e680c371ef957b9455a2c8071681dd83599f8b9" },
-    { "source": "plugins/shared/ENGINE-SENSITIVITY.md", "translation": "localization/ru/plugins/shared/ENGINE-SENSITIVITY.md", "sourceSha256": "8f99dad367e396973cf6cae0f8ddc638c8f464f12afb5c3e9eb3bc08110ccbed" },
-    { "source": "plugins/shared/README.md", "translation": "localization/ru/plugins/shared/README.md", "sourceSha256": "81a8728eeee125df8877352b6ae972f1410db10127dd339f6aa579380f152725" },
-    { "source": "prototype/stress/RESULTS.md", "translation": "localization/ru/prototype/stress/RESULTS.md", "sourceSha256": "7b7b19fba38e3b75dc76484f5a5235dd1bb39e86de550ccaa6761cf47a8a65c0" },
-    { "source": "prototype/sweep/README.md", "translation": "localization/ru/prototype/sweep/README.md", "sourceSha256": "d36ecf3293963884d4dce9b95d4ee42e3c1454eaad602c2d48a39ecc0464e72b" },
-    { "source": "prototype/ui-smoke/README.md", "translation": "localization/ru/prototype/ui-smoke/README.md", "sourceSha256": "f7d3dedbd8e15d0218488b1c7fb712cce4236fe13a57ea3fe7f2fb8ec5e570c9" },
-    { "source": "tests/README.md", "translation": "localization/ru/tests/README.md", "sourceSha256": "719f128a8dd53127e044b1be1bfbbc9bb000f319dd98405c7f9912e1c1880937" }
+    {
+      "source": "README.md",
+      "translation": "localization/ru/README.md",
+      "sourceSha256": "a089f47c7c59a8ebbe0c7e20d396afa7d41ae2a98c73fc290e8dd56905840c9d"
+    },
+    {
+      "source": "docs/FIN-SPEC.md",
+      "translation": "localization/ru/docs/FIN-SPEC.md",
+      "sourceSha256": "4cecdebbf1f07f69396ba0f6a08562bb502a26efc952f01fc533ef47ad23f4eb"
+    },
+    {
+      "source": "docs/IMPLEMENTATION-PLAN.md",
+      "translation": "localization/ru/docs/IMPLEMENTATION-PLAN.md",
+      "sourceSha256": "759eda0e0b5f8db5f74a08e1d1c12aedf525bb35a5959d26fbac4566d465fd0c"
+    },
+    {
+      "source": "docs/PERFORMANCE-SPEC.md",
+      "translation": "localization/ru/docs/PERFORMANCE-SPEC.md",
+      "sourceSha256": "bc64a6e2ef1322d9b47f821d12daa862e52314a27559c25986f7f5b455e8562c"
+    },
+    {
+      "source": "docs/REVIEW-2026-07-24.md",
+      "translation": "localization/ru/docs/REVIEW-2026-07-24.md",
+      "sourceSha256": "5853f895af71b5188fce4bb0f07448bfbd4f6f249339a2daab1a804c7b2021d0"
+    },
+    {
+      "source": "docs/ROADMAP.md",
+      "translation": "localization/ru/docs/ROADMAP.md",
+      "sourceSha256": "2b486be45751f5c9395e3efc4bf5c7f648ea8225bb4397843d44e5e934b513a1"
+    },
+    {
+      "source": "plugins/onshape/README.md",
+      "translation": "localization/ru/plugins/onshape/README.md",
+      "sourceSha256": "895cc93b4001ef07bce5926e525b17f223dac0236bf0635d96e778604721c93f"
+    },
+    {
+      "source": "plugins/orca/README.md",
+      "translation": "localization/ru/plugins/orca/README.md",
+      "sourceSha256": "950954eafdff7e73f8a11fa1a5d5b7c439db329feaaa8cbbee56e1aa42598b64"
+    },
+    {
+      "source": "plugins/prusa/README.md",
+      "translation": "localization/ru/plugins/prusa/README.md",
+      "sourceSha256": "d926da3290415fd377247cb55e680c371ef957b9455a2c8071681dd83599f8b9"
+    },
+    {
+      "source": "plugins/shared/ENGINE-SENSITIVITY.md",
+      "translation": "localization/ru/plugins/shared/ENGINE-SENSITIVITY.md",
+      "sourceSha256": "8f99dad367e396973cf6cae0f8ddc638c8f464f12afb5c3e9eb3bc08110ccbed"
+    },
+    {
+      "source": "plugins/shared/README.md",
+      "translation": "localization/ru/plugins/shared/README.md",
+      "sourceSha256": "81a8728eeee125df8877352b6ae972f1410db10127dd339f6aa579380f152725"
+    },
+    {
+      "source": "prototype/examples/README.md",
+      "translation": "localization/ru/prototype/examples/README.md",
+      "sourceSha256": "db65c865c13a4c880c4dfa75ffef6d166d27126705d9ddebeebb8ab66a5bd5bc"
+    },
+    {
+      "source": "prototype/stress/RESULTS.md",
+      "translation": "localization/ru/prototype/stress/RESULTS.md",
+      "sourceSha256": "7b7b19fba38e3b75dc76484f5a5235dd1bb39e86de550ccaa6761cf47a8a65c0"
+    },
+    {
+      "source": "prototype/sweep/README.md",
+      "translation": "localization/ru/prototype/sweep/README.md",
+      "sourceSha256": "d36ecf3293963884d4dce9b95d4ee42e3c1454eaad602c2d48a39ecc0464e72b"
+    },
+    {
+      "source": "prototype/ui-smoke/README.md",
+      "translation": "localization/ru/prototype/ui-smoke/README.md",
+      "sourceSha256": "f7d3dedbd8e15d0218488b1c7fb712cce4236fe13a57ea3fe7f2fb8ec5e570c9"
+    },
+    {
+      "source": "tests/README.md",
+      "translation": "localization/ru/tests/README.md",
+      "sourceSha256": "719f128a8dd53127e044b1be1bfbbc9bb000f319dd98405c7f9912e1c1880937"
+    }
   ]
 }
