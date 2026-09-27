@@ -55,7 +55,7 @@ jobs:
             exit 0
           fi
 
-          pr=$(gh pr list --state open --base main --head sync/upstream --json number --jq '.[0].number // empty')
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&head=$GITHUB_REPOSITORY_OWNER%3Async%2Fupstream" --jq '.[0].number // empty')
           if [ -n "$pr" ]; then
             git checkout -B sync/upstream origin/sync/upstream
             echo "pr=$pr" >> "$GITHUB_OUTPUT"
@@ -79,10 +79,13 @@ jobs:
 
           git push --force-with-lease origin sync/upstream
           if [ -z "$pr" ]; then
-            pr=$(gh pr create --draft --base main --head sync/upstream \
-              --title 'Sync upstream changes' \
-              --body 'Automated integration of the latest gittrahan/support-fins main. Review localization checks, mark ready, and merge manually.')
-            echo "pr=${pr##*/}" >> "$GITHUB_OUTPUT"
+            pr=$(gh api --method POST "repos/$GITHUB_REPOSITORY/pulls" \
+              -f title='Sync upstream changes' \
+              -f head='sync/upstream' \
+              -f base='main' \
+              -f body='Automated integration of the latest gittrahan/support-fins main. Review localization checks, mark ready, and merge manually.' \
+              -F draft=true --jq '.number')
+            echo "pr=$pr" >> "$GITHUB_OUTPUT"
           fi
           echo "blocked=false" >> "$GITHUB_OUTPUT"
       - name: Report a blocked synchronization
