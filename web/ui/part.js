@@ -4,7 +4,7 @@
  * the overhang threshold. Owns part / topology / rotM3 / lastResult.
  */
 import * as THREE from 'three';
-import { buildTopology, analyze, DEFAULT_THRESHOLD } from '../overhangs.js';
+import { buildTopology, analyze, DEFAULT_THRESHOLD, MIN_REGION_AREA } from '../overhangs.js';
 import { el } from './dom.js';
 import { scene, controls, frame } from './scene.js';
 import { removeMode, cancelRemove, resetRemovals } from './remove.js';
@@ -17,7 +17,7 @@ import {
   setDrawnWalls, setDrawMsg, markPrintTrisDirty, clearPreview, syncDrawControls,
 } from './walls.js';
 import { activeAdded, refreshFins, markFinsStale } from './finbuild.js';
-import { finsVisible, setDrawAugment, syncAugmentUI } from './settings.js';
+import { finsVisible, highlightSmall, setDrawAugment, syncAugmentUI } from './settings.js';
 import { gizmo, hoverFace, setGizmo, setLayPlacing } from './pose.js';
 
 const partMaterial = new THREE.MeshStandardMaterial({
@@ -34,6 +34,9 @@ let lastSize = null;
 const SHADE = {
   plain: new THREE.Color().setHex(0xb9c2d0, THREE.SRGBColorSpace),
   over: new THREE.Color().setHex(0xff5a4d, THREE.SRGBColorSpace),
+  // an overhang too small to support (a sliver analyze drops): it prints
+  // unsupported, so it must still show -- amber, like the over-warn card
+  small: new THREE.Color().setHex(0xffb454, THREE.SRGBColorSpace),
   bed: new THREE.Color().setHex(0x3f7fd0, THREE.SRGBColorSpace),
 };
 
@@ -138,6 +141,58 @@ function computeFlatBaseline() {
   flatRegions = topology ? analyze(topology, threshold, IDENTITY3).regions.length : null;
 }
 
+/**
+ * Face colours, the Overhangs readout line and the over-warn card for `res`.
+ * Split from shade() so the Display toggle can repaint without re-analysing
+ * (and without rebuilding the fins, which shade() also does).
+ */
+export function paintOverhangs(res = lastResult) {
+  if (!part || !topology || !res) return;
+  const colors = part.geometry.getAttribute('color');
+  const arr = colors.array;
+  for (let f = 0; f < topology.nFaces; f++) {
+    const c = res.kept[f] ? SHADE.over : res.over[f] && highlightSmall ? SHADE.small : res.onBed[f] ? SHADE.bed : SHADE.plain;
+    for (let i = 0; i < 3; i++) {
+      const o = f * 9 + i * 3;
+      arr[o] = c.r; arr[o + 1] = c.g; arr[o + 2] = c.b;
+    }
+  }
+  colors.needsUpdate = true;
+
+  const dropped = res.rawRegionCount - res.regions.length;
+  // The slivers keep their own amber swatch, so the amber faces have a name even
+  // when this pose has no region the tool supports.
+  const sOver = el('s-over');
+  sOver.textContent = res.regions.length === 0
+    ? 'none'
+    : `${res.regions.length} region${res.regions.length === 1 ? '' : 's'}`;
+  if (dropped) {
+    const sw = document.createElement('i');
+    sw.className = 'sw sw-small';
+    sw.title = `Amber: overhangs under ${MIN_REGION_AREA} mm², too small for a fin`;
+    sOver.append(' (+', sw, `${dropped} sliver${dropped === 1 ? '' : 's'})`);
+  }
+  sOver.classList.toggle('good', res.regions.length === 0 && !dropped);
+
+  // Overhang warning (bottom-right card). The tool builds support for the big
+  // overhang REGIONS but drops the small ones -- hole ceilings, slot roofs, a
+  // slotted peg's underside -- as slivers. Those are exactly what prints rough by
+  // surprise, so they shade amber and this card says what amber means, whenever
+  // there are any (a clean pose too: the amber faces still need a name).
+  // Settings > Display > "Highlight small overhangs" off hides the shading and this
+  // card; the sliver count in the readout above stays.
+  const warn = el('over-warn');
+  if (dropped > 0 && highlightSmall) {
+    const one = dropped === 1;
+    warn.textContent = `⚠ ${dropped} overhang${one ? '' : 's'} shaded amber ${one ? 'is' : 'are'} `
+      + `too small for a fin (under ${MIN_REGION_AREA} mm² each), so ${one ? 'it prints' : 'they print'} `
+      + `unsupported this way up and may come out rough. Try Suggest orientation to point `
+      + `${one ? 'it' : 'them'} up.`;
+  } else {
+    warn.textContent = '';
+  }
+}
+
 export function shade() {
   if (!part || !topology) return new THREE.Vector3();
   rotM3.setFromMatrix4(rotM4.makeRotationFromQuaternion(part.quaternion));
@@ -157,38 +212,8 @@ export function shade() {
   const size = new THREE.Vector3(res.size.x, res.size.y, res.size.z);
   report(partName, size);
 
-  const colors = part.geometry.getAttribute('color');
-  const arr = colors.array;
-  for (let f = 0; f < topology.nFaces; f++) {
-    const c = res.kept[f] ? SHADE.over : res.onBed[f] ? SHADE.bed : SHADE.plain;
-    for (let i = 0; i < 3; i++) {
-      const o = f * 9 + i * 3;
-      arr[o] = c.r; arr[o + 1] = c.g; arr[o + 2] = c.b;
-    }
-  }
-  colors.needsUpdate = true;
-
+  paintOverhangs(res);
   const dropped = res.rawRegionCount - res.regions.length;
-  el('s-over').textContent = res.regions.length === 0
-    ? 'none'
-    : `${res.regions.length} region${res.regions.length === 1 ? '' : 's'}` +
-      (dropped ? ` (+${dropped} sliver${dropped === 1 ? '' : 's'})` : '');
-  el('s-over').classList.toggle('good', res.regions.length === 0);
-
-  // Overhang warning (bottom-right card). The tool builds support for the big
-  // overhang REGIONS but drops the small ones -- hole ceilings, slot roofs, bore
-  // tops -- as slivers. Those are exactly what prints rough by surprise, so name
-  // them out loud instead of leaving the maker to find out at the printer. Only
-  // fires when this pose actually has overhangs to support (a clean/flat pose says
-  // its piece via s-flat-note); the fix is almost always a better orientation.
-  const warn = el('over-warn');
-  if (res.regions.length > 0 && dropped > 0) {
-    warn.textContent = `⚠ ${dropped} small overhang${dropped === 1 ? '' : 's'} `
-      + `(hole ceilings, slots, bore tops) print unsupported this way up and may come `
-      + `out rough. Try Suggest orientation to point them up.`;
-  } else {
-    warn.textContent = '';
-  }
   el('s-overarea').textContent = `${res.overArea.toFixed(0)} mm²`;
   el('s-bed').textContent = `${res.bedArea.toFixed(0)} mm²`;
   el('s-bed').classList.toggle('warn', res.bedArea < 1);
@@ -198,7 +223,7 @@ export function shade() {
   // loaded, the overhangs on screen are self-inflicted by rotating.
   const flat = el('s-flat-note');
   if (res.regions.length === 0) {
-    flat.textContent = 'No supports needed this way up.';
+    flat.textContent = dropped ? 'Nothing big enough for a fin this way up.' : 'No supports needed this way up.';
     flat.className = 'note good';
   } else if (flatRegions === 0) {
     flat.textContent = 'This prints clean lying flat. You only need fins if you’re '

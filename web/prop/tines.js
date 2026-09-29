@@ -42,6 +42,7 @@ function ptTriDist2(p, a, b, c) {
  * beside a near-vertical wall (nearest face is that side) -- while a shallow ceiling
  * (near-vertical normal, tiny horizontal component) returns null, the honest "too
  * flat to grip horizontally" case. Returns {x,y} unit horizontal or null.
+ * emitTines then squares the heading to the wall's own axes (squareToRun).
  */
 function biteDirsAt(topo, rot, offset, px, py, pz) {
   const pos = topo.pos, nrm = topo.nrm, nF = topo.nFaces;
@@ -76,6 +77,51 @@ function biteDirsAt(topo, rot, offset, px, py, pz) {
     dirs.push({ x: hx / hm, y: hy / hm });
   }
   return dirs;
+}
+
+/**
+ * Square the part's bite headings to the wall: each becomes the nearer of the
+ * wall's four axes (along the run either way, or straight across either way),
+ * nearest first, then the next-nearer axis as a fallback. Only axes within 90
+ * degrees of the part's heading are offered, so a tine still bites where the
+ * part is. The part's own heading comes last: where no square tine lands (the
+ * lowest grip on a tilted coin or torus), an angled one still beats losing the
+ * base grip -- 11 sweep cases' lowest tine rose up to 2.7 mm without it.
+ *
+ * The heading itself is the underside's down-slope (biteDirsAt), which is only
+ * square to a wall that runs down the slope or along its contour -- what the
+ * patch path lays. A wall that crosses a curved underside at an angle (a raster
+ * track under a torus, or a straight track under a sphere) got its tines out of
+ * the wall at 20-70 degrees, poking diagonally off its side (torus X30: 12 of 22
+ * tines). A square tine is either inside the wall's own footprint (along) or a
+ * clean bridge off its face (across), both of which print as one bead.
+ */
+function squareToRun(dirs, line, k) {
+  // the run at station k: its own segment, or the nearest non-degenerate one
+  // (a duplicated station has zero length)
+  let rx = 0, ry = 0;
+  for (let j = 0; j < line.length - 1 && !(rx || ry); j++) {
+    for (const i of [k + j, k - j]) {
+      if (i < 0 || i >= line.length - 1) continue;
+      const dx = line[i + 1][0] - line[i][0], dy = line[i + 1][1] - line[i][1];
+      if (Math.hypot(dx, dy) > 1e-9) { rx = dx; ry = dy; break; }
+    }
+  }
+  const rn = Math.hypot(rx, ry);
+  if (rn < 1e-9) return dirs;
+  rx /= rn; ry /= rn;
+  const axes = [[rx, ry], [-rx, -ry], [-ry, rx], [ry, -rx]];
+  const out = [], seen = new Set();
+  for (const c of dirs) {
+    const ranked = axes.map(([ux, uy], i) => ({ i, x: ux, y: uy, dot: ux * c.x + uy * c.y }))
+      .filter((u) => u.dot > 1e-6).sort((p, q) => q.dot - p.dot);
+    for (const u of ranked) {
+      if (seen.has(u.i)) continue;       // tied faces often rank the same axis
+      seen.add(u.i);
+      out.push({ x: u.x, y: u.y });
+    }
+  }
+  return out.concat(dirs);
 }
 
 /**
@@ -185,11 +231,12 @@ export function emitTines(line, tris, topo, rot, offset, out, stepArg = PROP.tin
     const zMid = z - tineH / 2;
 
     // BITE DIRECTION comes from the PART (which way the nearest face points),
-    // never from the wall's run: a run-aligned nub lies flat on a leaning face
-    // whose level contour the wall follows -- the regression. Then require the
+    // never from the wall's run alone: a run-aligned nub lies flat on a leaning
+    // face whose level contour the wall follows -- the regression. The part's
+    // heading is then squared to the wall's nearest axis (squareToRun). Then require the
     // nub's full reach to actually land inside the part, or skip it (honest -- no
     // tine gripping air, no tine on a ceiling too shallow to grab sideways).
-    const bd = biteDirsAt(topo, rot, offset, x, y, zMid).find((c) =>
+    const bd = squareToRun(biteDirsAt(topo, rot, offset, x, y, zMid), line, k).find((c) =>
       insidePart(topo, rot, offset, x + c.x * PROP.tineBite, y + c.y * PROP.tineBite, zMid));
     if (!bd) return false;
     const dirx = bd.x, diry = bd.y;
