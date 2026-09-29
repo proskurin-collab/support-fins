@@ -25,6 +25,12 @@ fence around it.
   because its block put the run tangent *into* the part by construction;
 - an overhang a tooth cannot reach into gets **no tine** (no gripping air).
 
+**`bores.test.js`** -- bores get supported (reversed 2026-09-27 after print tests):
+- a bore's ceiling gets a **part-attached wall on the bore floor**, flagged `inBore`;
+- that wall runs **along the bore axis**, so it pulls out an open end;
+- no `bore` skip reason: a refusal is counted as `stub` / `blocked` / `buried`
+  (the old `bore` count was mostly short runs, e.g. artichoke X30's 54).
+
 **`raster.test.js`** -- raster placement (`web/prop/raster.js`), raced per region:
 - a curved underside the tube route left bare (flat torus at X30: 4%) gets **held**;
 - a swap **never raises the lowest tine** (the part's base grip) past 0.1 mm and
@@ -34,6 +40,8 @@ fence around it.
 - tines sit **square to their wall** (along its run or straight across); an angled
   tine is only the fallback where no square one reaches the part (raster torus X30
   had 12 of 22 diagonal).
+Shapes: curved fixtures `tests/fixtures/{bowl,dome_ceiling,torus_flat}.stl`
+(`gen_curved.py`), plus stress models sphere/torus (they swap) and tube/portal (wedges).
 
 **`supports.test.js`** -- `buildFins` on the stress models, tilted so they place fins:
 - the fin **wall never fuses into the STL** (it clears the part by the breakaway
